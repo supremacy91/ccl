@@ -116,13 +116,11 @@ class Save extends \Magento\Backend\App\Action {
 							$this->_manufacturertextModel->save();
 						}
 					} else {
-
 						
 						if ($data['store_id'] == 0) {
 							$text_data = $collection_text->addFieldToFilter('store_id', $storeId)->getData();
 							// $this->saveManufacturerData($data, $data['store_id'], $text_data[0]['text_id'], $model->getManufacturerId());
 							foreach ($this->_storeConfig->getStoreManager()->getStores() as $store) {
-								var_dump($store);
 								$collection_text = '';
 								$collection_text = $this->_manufacturertextModel
 									->getCollection()
@@ -138,7 +136,6 @@ class Save extends \Magento\Backend\App\Action {
 									$this->_manufacturertextModel->save();
 								}
 							}
-						die();
 						} else {
 							$text_data = $collection_text->addFieldToFilter('store_id', $storeId)->getData();
 							$this->_manufacturertextModel->setData($data)

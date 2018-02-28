@@ -11,7 +11,8 @@
         "magento/product-community-edition": "2.1.9",
         "composer/composer": "@alpha",
         "mandrill/mandrill": "^1.0",
-        "ebizmarts/mailchimp-lib": "^3.0"
+        "ebizmarts/mailchimp-lib": "^3.0",
+        "afterpay/afterpay-module": "^1.6"
     },
     "require-dev": {
         "phpunit/phpunit": "4.1.0",
@@ -58,4 +59,5 @@
     "extra": {
         "magento-force": "override"
     }
+
 }
