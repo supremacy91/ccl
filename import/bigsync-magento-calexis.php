@@ -299,6 +299,8 @@ try{
 	}
 	unset($handle,$previousrow,$currentrow,$color,$code);
 	
+	
+	$excludecollection = array('F/W15/16','F/W 14/15','2015 Zomer','SS16','','FW16');
 	/* 
 	
 	NOW THE ITERATIONS STARTS 
@@ -322,6 +324,8 @@ try{
 			$num = count($data);
 			//Only continue when it has the required number of fields (and is according to format)
 			if($num == $fields){
+				//Only allow rows that are in the allowed collection
+				if(!in_array($data[8],$excludecollection)){
 				//Add the row to the resultset    
 				$currentrow = $data[1];
 				if(empty($currentrow)){
@@ -445,7 +449,7 @@ try{
 				}
 				   
 				$previousrow = $currentrow;    
-				
+				}
 			}else{
 				//Log error in file
 				error_log("Row ".$row." has not been pushed, not according to format ".count($data),0);

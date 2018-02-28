@@ -7504,3 +7504,4 @@ Delete,Verwijder,module,Magento_Wishlist
 "Account Dashboard",Accountoverzicht,theme,frontend/Magento/luma
 "Account Information","Account Gegevens",theme,frontend/Magento/luma
 "Address Book",Adresboek,theme,frontend/Magento/luma
+"Are you sure you would like to remove this item from the shopping cart?","Weet u zeker dat u dit product wilt verwijderen uit uw winkelmandje?","module","Magento_Checkout"
