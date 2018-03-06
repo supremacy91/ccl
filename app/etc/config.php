@@ -2,6 +2,7 @@
 return array (
   'modules' => 
   array (
+    'Afterpay_Payment' => 1,
     'Amasty_Base' => 1,
     'Amasty_SeoToolKit' => 1,
     'Amasty_SeoRichData' => 1,

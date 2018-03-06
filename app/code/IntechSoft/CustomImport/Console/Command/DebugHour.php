@@ -2,7 +2,6 @@
 
 namespace IntechSoft\CustomImport\Console\Command;
 
-
 use Symfony\Component\Console\Command\Command; // for parent class
 use Symfony\Component\Console\Input\InputInterface; // for InputInterface used in execute method
 use Symfony\Component\Console\Output\OutputInterface; // for OutputInterface used in execute method
@@ -12,7 +11,7 @@ use Magento\Framework\Api\SortOrderBuilder;
 use Magento\Store\Model\StoreManagerInterface;
 use Magento\MediaStorage\Model\File\UploaderFactory;
 use Magento\Framework\Filesystem;
-use IntechSoft\CustomImport\Model\ImportFactory;
+use IntechSoft\CustomImport\Model\Import;
 use Magento\Framework\App\Filesystem\DirectoryList;
 use Magento\Framework\Stdlib\DateTime\DateTime;
 use IntechSoft\CustomImport\Helper\UrlRegenerate;
@@ -45,7 +44,7 @@ class DebugHour extends Command
     protected $_filesystem;
 
     /**
-     * @var \IntechSoft\CustomImport\Model\Import
+     * @var Import
      */
     protected $_importModel;
 
@@ -71,7 +70,7 @@ class DebugHour extends Command
      * Import constructor.
      * @param \Magento\MediaStorage\Model\File\UploaderFactory $uploader
      * @param \Magento\Framework\Filesystem $filesystem
-     * @param \IntechSoft\CustomImport\Model\ImportFactory $importModel
+     * @param \IntechSoft\CustomImport\Model\Import $importModel
      * @param \Magento\Framework\App\Filesystem\DirectoryList $directoryList
      * @param \Magento\Framework\Stdlib\DateTime\DateTime $date
      * @param \IntechSoft\CustomImport\Helper\UrlRegenerate $urlRegenerate
@@ -79,7 +78,7 @@ class DebugHour extends Command
     public function __construct(
         UploaderFactory $uploader,
         Filesystem $filesystem,
-        ImportFactory $importModel,
+        Import $importModel,
         DirectoryList $directoryList,
         DateTime $date,
         UrlRegenerate $urlRegenerate,
@@ -178,7 +177,9 @@ class DebugHour extends Command
             $this->_coreRegistry->unregister('importSuccessFlag');
             $importedFileName = $importDir . '/' . $file;
             $this->_logger->info('$importedFileName - ' . $importedFileName);
-            $importModel = $this->_importModel->create();
+            /* @var $importModel \IntechSoft\CustomImport\Model\Import */
+//            $importModel = $this->_importModel->create();
+            $importModel = $this->_importModel;
             $importModel->setCsvFile($importedFileName, true)->process();
 
             $importSuccessFlag = $this->_coreRegistry->registry('importSuccessFlag');
