@@ -502,7 +502,6 @@ class Import extends AbstractHelper
                         }
                     }
                 }
-
             }
             $path = $newPath;
             $this->itemImage = $images[0];

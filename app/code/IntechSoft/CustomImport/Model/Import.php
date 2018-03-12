@@ -219,6 +219,8 @@ class Import extends AbstractModel
 
     /**
      * execute import function
+     *
+     * @throws \Magento\Framework\Exception\LocalizedException
      */
     public function execute()
     {
@@ -233,7 +235,9 @@ class Import extends AbstractModel
 
     /**
      * import process function
+     *
      * @return $this
+     * @throws \Magento\Framework\Exception\LocalizedException
      */
     protected function callImport()
     {

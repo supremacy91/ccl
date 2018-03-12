@@ -51,6 +51,8 @@ class UrlRegenerate extends AbstractHelper
 
     public function regenerateUrl()
     {
+        $this->logger->info('Start: regenerate URL');
+
         if ($this->storeManager->isSingleStoreMode()) {
             $stores = [$this->storeManager->getStore(0)];
         } else {
@@ -78,11 +80,14 @@ class UrlRegenerate extends AbstractHelper
                             $this->productUrlRewriteGenerator->generate($product)
                         );
                     } catch (\Exception $e) {
-                        $this->logger->error('Duplicated url for '.$product->getId().' store id '.$store_id);
+                        $this->logger->error('Duplicated url for ' . $product->getId() . ' store id ' . $store_id);
+                        $this->logger->error('Original Error: ' . $e->getMessage());
                     }
                 }
             }
         }
+
+        $this->logger->info('Finished: regenerate URL');
     }
 
 }

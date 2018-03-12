@@ -157,7 +157,7 @@ class DebugHour extends Command
 
         ini_set('memory_limit', '2048M');
 
-        $this->_logger->info('hourly cron started at - ' . $this->_date->gmtDate('Y-m-d H:i:s'));
+        $this->_logger->info('# Hourly cron started at - ' . $this->_date->gmtDate('Y-m-d H:i:s'));
         $importDir = $this->_directoryList->getPath(DirectoryList::VAR_DIR) . '/' . self::CUSTOM_IMPORT_FOLDER ;
         $this->_logger->info('$importDir - '.$importDir);
 
@@ -190,6 +190,9 @@ class DebugHour extends Command
                 $src = $importedFileName;
                 $archiveName = "completed_" . date('YmdHis') . "_" . $file;
                 $dest = $this->_directoryList->getPath(DirectoryList::VAR_DIR) . "/import_history/" . $archiveName;
+                if (!is_dir(str_replace($archiveName, "", $dest))) {
+                    mkdir(str_replace($archiveName, "", $dest));
+                }
                 $r = rename($src, $dest);
                 if ($r) {
                     $this->_logger->info('Moved to import history');
@@ -197,7 +200,8 @@ class DebugHour extends Command
                 /*** Moved to import History***/
 
                 //unlink($importDir. '/' .$file);
-                $this->_urlRegenerateHelper->regenerateUrl();
+
+//                $this->_urlRegenerateHelper->regenerateUrl();
             } else {
                 foreach ($importModel->errors as $error) {
                     if (is_array($error)) {
