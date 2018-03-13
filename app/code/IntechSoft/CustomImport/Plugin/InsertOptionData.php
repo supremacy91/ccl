@@ -77,7 +77,7 @@ class InsertOptionData{
                                 if (!$currentHexValue) {
                                     continue;
                                 }
-                                $this->addSwatchValues($intOptionId, $storeId, 0, $currentHexValue);
+                                $this->addSwatchValues($intOptionId, $storeIdKey, 1, $currentHexValue);
                             }
                     } else if ($option['attribute_id'] === '172') {
                         foreach ($values as $storeIdKey => $currentValue) {
