@@ -1,20 +1,32 @@
 <?php
 namespace IntechSoft\CustomImport\Plugin;
 
+use Magento\Eav\Setup\EavSetup;
+use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Setup\ModuleDataSetupInterface;
+use Magento\Framework\Registry;
+use IntechSoft\CustomImport\Model\Import as CustomImportModel;
 
 class InsertOptionData{
 
     private $setup;
+    private $registry;
+
     public function __construct(
-        ModuleDataSetupInterface $setup
+        ModuleDataSetupInterface $setup,
+        Registry $registry
     ) {
         $this->setup = $setup;
-       
+        $this->registry = $registry;
     }
 
-    public function aroundAddAttributeOption(\Magento\Eav\Setup\EavSetup $subject, $proceed, $option){
-        $proceed = function($option) {
+    public function aroundAddAttributeOption(EavSetup $subject, $proceed, $option)
+    {
+        // We should determine is Custom Import is working.
+        $isCustomImport = $this->registry->registry(CustomImportModel::REGISTER_KEY);
+        $isCustomImportForm = $this->registry->registry(CustomImportModel::REGISTER_KEY_FROM);
+
+        if ($isCustomImport || $isCustomImportForm) {
             $optionTable = $this->setup->getTable('eav_attribute_option');
             $optionValueTable = $this->setup->getTable('eav_attribute_option_value');
 
@@ -56,6 +68,22 @@ class InsertOptionData{
                         $data = ['option_id' => $intOptionId, 'store_id' => $storeId, 'value' => $value];
                         $this->setup->getConnection()->insert($optionValueTable, $data);
                     }
+
+                    // Some hardcoded attribute IDs: 173 - color, 172 - size.
+                    if ($option['attribute_id'] === '173') {
+                            $colorMap = $this->registry->registry('color_data');
+                            foreach ($values as $storeIdKey => $currentValue) {
+                                $currentHexValue = isset($colorMap[$currentValue]) ? $colorMap[$currentValue] : '';
+                                if (!$currentHexValue) {
+                                    continue;
+                                }
+                                $this->addSwatchValues($intOptionId, $storeId, 0, $currentHexValue);
+                            }
+                    } else if ($option['attribute_id'] === '172') {
+                        foreach ($values as $storeIdKey => $currentValue) {
+                            $this->addSwatchValues($intOptionId, $storeIdKey, 0, $currentValue);
+                        }
+                    }
                 }
             } elseif (isset($option['values'])) {
                 foreach ($option['values'] as $sortOrder => $label) {
@@ -68,9 +96,24 @@ class InsertOptionData{
                     $this->setup->getConnection()->insert($optionValueTable, $data);
                 }
             }
-        };
-        return $proceed($option);
+        } else {
+            $proceed($option);
+        }
     }
 
+    /**
+     * Added swatch value to db.
+     *
+     * @param     $optionId
+     * @param int $storeId
+     * @param int $type
+     * @param     $value
+     */
+    private function addSwatchValues($optionId, $storeId = 0, $type = 0, $value)
+    {
+        $optionSwatchTable = $this->setup->getTable('eav_attribute_option_swatch');
 
+        $dataHex = ['option_id' => $optionId, 'store_id' => $storeId, 'type' => $type, 'value' => $value];
+        $this->setup->getConnection()->insertOnDuplicate($optionSwatchTable, $dataHex, array('value'));
+    }
 }

@@ -113,13 +113,18 @@ class DebugHour extends Command
         parent::configure();
     }
 
+
     /**
      * Method executed when cron runs in server
+     *
+     * @param InputInterface  $input
+     * @param OutputInterface $output
+     * @return int|null|void
      */
     public function execute(InputInterface $input, OutputInterface $output)
     {
         $this->_coreRegistry->register('isIntechsoftCustomImportModule', 1);
-       // mail('xxx@example.com', 'My Subject', "message");
+
         $templateId = $this->_scopeConfig->getValue("customImportSection/emailGroup/template_id", ScopeInterface::SCOPE_STORE);
         $senderDataId = $this->_scopeConfig->getValue("customImportSection/emailGroup/sender_data_id", ScopeInterface::SCOPE_STORE);
 
@@ -178,7 +183,6 @@ class DebugHour extends Command
             $importedFileName = $importDir . '/' . $file;
             $this->_logger->info('$importedFileName - ' . $importedFileName);
             /* @var $importModel \IntechSoft\CustomImport\Model\Import */
-//            $importModel = $this->_importModel->create();
             $importModel = $this->_importModel;
             $importModel->setCsvFile($importedFileName, true)->process();
 
@@ -186,7 +190,7 @@ class DebugHour extends Command
             if ($importSuccessFlag === 1) {
                 $this->_logger->info(self::SUCCESS_MESSAGE . $file);
 
-                /*** Moved to import History***/
+                /* *** Moved to import History *** */
                 $src = $importedFileName;
                 $archiveName = "completed_" . date('YmdHis') . "_" . $file;
                 $dest = $this->_directoryList->getPath(DirectoryList::VAR_DIR) . "/import_history/" . $archiveName;
@@ -201,6 +205,7 @@ class DebugHour extends Command
 
                 //unlink($importDir. '/' .$file);
 
+                // TODO: need to understand for what is it!
 //                $this->_urlRegenerateHelper->regenerateUrl();
             } else {
                 foreach ($importModel->errors as $error) {
@@ -219,21 +224,23 @@ class DebugHour extends Command
                 if ($r) {
                     $this->_logger->info('Moved to failed history');
                 }
-                $vars = array("failed_origin_name" => $file, "failed_full_name" => $archiveName);
-                $vars = new \Magento\Framework\DataObject($vars);
-                $tomail = 'kaplunovskymv@gmail.com';
-                $toname = 'Maks';
 
-                if ($templateId && $senderDataId) {
-                    $transport = $this->_transportBuilder
-                        ->setTemplateIdentifier($templateId)
-                        ->setTemplateOptions(['area' => Area::AREA_ADMINHTML, 'store' => Store::DEFAULT_STORE_ID])
-                        ->setTemplateVars($vars->getData())
-                        ->setFrom($senderDataId)
-                        ->addTo($tomail, $toname)
-                        ->getTransport();
-                   // $transport->sendMessage();
-                }
+                // Temporarily disabled and awaiting client approval.
+//                $vars = array("failed_origin_name" => $file, "failed_full_name" => $archiveName);
+//                $vars = new \Magento\Framework\DataObject($vars);
+//                $tomail = 'kaplunovskymv@gmail.com';
+//                $toname = 'Maks';
+//
+//                if ($templateId && $senderDataId) {
+//                    $transport = $this->_transportBuilder
+//                        ->setTemplateIdentifier($templateId)
+//                        ->setTemplateOptions(['area' => Area::AREA_ADMINHTML, 'store' => Store::DEFAULT_STORE_ID])
+//                        ->setTemplateVars($vars->getData())
+//                        ->setFrom($senderDataId)
+//                        ->addTo($tomail, $toname)
+//                        ->getTransport();
+//                   // $transport->sendMessage();
+//                }
             }
 
 
@@ -261,9 +268,9 @@ class DebugHour extends Command
 //                }
 //            }
 
-            if ($i <= 1) {
+            /*if ($i <= 1) {
                 //  break;
-            }
+            }*/
         }
         $this->_logger->info('hourly cron finished at - ' . $this->_date->gmtDate('Y-m-d H:i:s'));
     }

@@ -7,12 +7,19 @@ use IntechSoft\CustomImport\Model\ImportFactory;
 use Magento\Framework\App\Filesystem\DirectoryList;
 use Magento\Framework\Stdlib\DateTime\DateTime;
 use IntechSoft\CustomImport\Helper\UrlRegenerate;
+use Magento\Framework\Registry;
+use IntechSoft\CustomImport\Model\Import as CustomImportModel;
 
 class Hour
 {
     const CUSTOM_IMPORT_FOLDER = 'import/cron/hour';
     const SUCCESS_MESSAGE      = 'Import finished successfully from file - ';
     const FAIL_MESSAGE         = 'Import fail from file - ';
+
+    /**
+     * @var Registry
+     */
+    private $_coreRegistry;
 
     /**
      * @var \Psr\Log\LoggerInterface
@@ -50,19 +57,22 @@ class Hour
     protected $_urlRegenerateHelper;
 
     /**
-     * Import constructor.
-     * @param \Magento\MediaStorage\Model\File\UploaderFactory $uploader
-     * @param \Magento\Framework\Filesystem $filesystem
-     * @param \IntechSoft\CustomImport\Model\ImportFactory $importModel
-     * @param \Magento\Framework\App\Filesystem\DirectoryList $directoryList
-     * @param \Magento\Framework\Stdlib\DateTime\DateTime $date
-     * @param \IntechSoft\CustomImport\Helper\UrlRegenerate $urlRegenerate
+     * Import Hour constructor.
+     *
+     * @param UploaderFactory $uploader
+     * @param Filesystem      $filesystem
+     * @param ImportFactory   $importModel
+     * @param DirectoryList   $directoryList
+     * @param Registry        $coreRegistry
+     * @param DateTime        $date
+     * @param UrlRegenerate   $urlRegenerate
      */
     public function __construct(
         UploaderFactory $uploader,
         Filesystem $filesystem,
         ImportFactory $importModel,
         DirectoryList $directoryList,
+        Registry $coreRegistry,
         DateTime $date,
         UrlRegenerate $urlRegenerate
     ) {
@@ -73,6 +83,7 @@ class Hour
         $this->_date                = $date;
         $this->_urlRegenerateHelper = $urlRegenerate;
         //$this->_logger = $logger;
+        $this->_coreRegistry = $coreRegistry;
 
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/hour_cron.log');
         $this->_logger = new \Zend\Log\Logger();
@@ -90,7 +101,7 @@ class Hour
         $importDir = $this->_directoryList->getPath(DirectoryList::VAR_DIR) . '/' . self::CUSTOM_IMPORT_FOLDER ;
         $this->_logger->info('$importDir - '.$importDir);
 
-        $this->_coreRegistry->register('isIntechsoftCustomImportModule', 1);
+        $this->_coreRegistry->register(CustomImportModel::REGISTER_KEY, 1);
 
         if(!is_dir($importDir)) {
             mkdir($importDir, 0775);
@@ -126,7 +137,9 @@ class Hour
                 /*** Moved to import History***/
 
                 //unlink($importDir. '/' .$file);
-                $this->_urlRegenerateHelper->regenerateUrl();
+
+                // TODO: for what is it?
+//                $this->_urlRegenerateHelper->regenerateUrl();
             } else {
                 foreach ($importModel->errors as $error) {
                     if (is_array($error)) {
@@ -144,21 +157,22 @@ class Hour
                 if ($r) {
                     $this->_logger->info('Moved to failed history');
                 }
-                $vars = array("failed_origin_name" => $file, "failed_full_name" => $archiveName);
-                $vars = new \Magento\Framework\DataObject($vars);
-                $tomail = 'kaplunovskymv@gmail.com';
-                $toname = 'Maks';
 
-                if ($templateId && $senderDataId) {
-                    $transport = $this->_transportBuilder
-                        ->setTemplateIdentifier($templateId)
-                        ->setTemplateOptions(['area' => Area::AREA_ADMINHTML, 'store' => Store::DEFAULT_STORE_ID])
-                        ->setTemplateVars($vars->getData())
-                        ->setFrom($senderDataId)
-                        ->addTo($tomail, $toname)
-                        ->getTransport();
-                    $transport->sendMessage();
-                }
+//                $vars = array("failed_origin_name" => $file, "failed_full_name" => $archiveName);
+//                $vars = new \Magento\Framework\DataObject($vars);
+//                $tomail = 'kaplunovskymv@gmail.com';
+//                $toname = 'Maks';
+
+//                if ($templateId && $senderDataId) {
+//                    $transport = $this->_transportBuilder
+//                        ->setTemplateIdentifier($templateId)
+//                        ->setTemplateOptions(['area' => Area::AREA_ADMINHTML, 'store' => Store::DEFAULT_STORE_ID])
+//                        ->setTemplateVars($vars->getData())
+//                        ->setFrom($senderDataId)
+//                        ->addTo($tomail, $toname)
+//                        ->getTransport();
+//                    $transport->sendMessage();
+//                }
             }
 
         }

@@ -7,7 +7,6 @@ use Magento\Framework\App\Filesystem\DirectoryList;
 use Magento\ImportExport\Model\Import\Adapter as ImportAdapter;
 use IntechSoft\CustomImport\Helper\Import as HelperImport;
 use IntechSoft\CustomImport\Model\Attributes;
-use Braintree\Exception;
 use Magento\Framework\ObjectManagerInterface;
 use Magento\Framework\Filesystem;
 use Magento\Framework\File\Csv;
@@ -15,12 +14,15 @@ use Magento\Framework\Registry;
 
 class Import extends AbstractModel
 {
+    const REGISTER_KEY               = 'isIntechsoftCustomImportModule';
+    const REGISTER_KEY_FROM          = 'isIntechsoftCustomImportViaForm';
+
     const MSG_SUCCESS                = 'Successfully';
     const MSG_FAILED                 = 'Import fail';
     const MSG_PREPARE_DATA_FAILED    = 'Prepare data was fail';
     const MSG_VALIDATION_FAILED      = 'Data validation is failed. Please fix errors and try again';
     const MSG_NO_DATA_FOUND          = 'No data found. Please try again latter';
-    const MSG_MAX_ERRORS             = 80000;
+    const MSG_MAX_ERRORS             = 1800000;
     const MSG_VALIDATION_STATUS      = 'Checked rows: %d; Checked entities: %d; Invalid rows: %d; Total errors: %d';
     const MSG_IMPORT_FINISHED        = 'Import finished';
     const MSG_IMPORT_TERMINATED      = 'Import terminated';
@@ -170,7 +172,6 @@ class Import extends AbstractModel
         return $result;
     }
 
-
     /**
      * Prepare data for import and save it to new csv file
      *
@@ -191,12 +192,6 @@ class Import extends AbstractModel
 
         // ### Collect simple product rows.
         if ($dataAfter = $this->_importHelper->prepareData($dataBefore)){
-//			echo "<pre>";
-//			print_r($dataBefore);
-//			echo "\n-----\n";
-//			print_r($dataAfter);
-//			exit;
-
             // ### Collect configurable product rows.
             $dataAfterConfigurable = $this->_importHelper->prepareDataConfigurable($dataBefore);
             $this->_preparedCsvFile = $this->_importCsv;
@@ -304,10 +299,6 @@ class Import extends AbstractModel
          * Starting Import Process
          */
         if ($importModel->getProcessedRowsCount() && $validationResult && $importModel->isImportAllowed()) {
-
-			//echo "111---";
-			//echo $this->_importHelper->getColumnImdexByName('brand_2');
-			//exit;
 
             $importResult = $importModel->importSource();
             if (!$importResult) {

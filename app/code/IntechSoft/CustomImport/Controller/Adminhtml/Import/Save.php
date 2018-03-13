@@ -2,12 +2,12 @@
 
 namespace IntechSoft\CustomImport\Controller\Adminhtml\Import;
 
-use Braintree\Exception;
 use Magento\Framework\Controller\ResultFactory;
 use Magento\Backend\App\Action;
 use \Magento\Framework\App\Filesystem\DirectoryList;
+use Magento\Framework\Registry;
+use Magento\Framework\Exception\LocalizedException;
 
-/*use IntechSoft\CustomImport\Controller\Adminhtml\Import;*/
 class Save extends Action
 {
     const CUSTOM_IMPORT_DIR = 'import/current';
@@ -18,12 +18,12 @@ class Save extends Action
      * @var \Magento\Indexer\Model\Indexer\CollectionFactory
      */
     private $indexerCollectionFactory;
+
     /**
      * Core registry
      *
      * @var \Magento\Framework\Registry
      */
-
     protected $coreRegistry;
 
     /**
@@ -68,7 +68,7 @@ class Save extends Action
      */
     public function __construct(
         \Magento\Backend\App\Action\Context $context,
-        \Magento\Framework\Registry $coreRegistry,
+        Registry $coreRegistry,
         \Magento\MediaStorage\Model\File\UploaderFactory $uploader,
         \Magento\Framework\Filesystem $filesystem,
         \IntechSoft\CustomImport\Model\Import $importModel,
@@ -77,6 +77,7 @@ class Save extends Action
         \IntechSoft\CustomImport\Model\Url\Rebuilt $rebuiltModel
     ) {
         parent::__construct($context);
+
         $this->uploader = $uploader;
         $this->coreRegistry = $coreRegistry;
         $this->importModel = $importModel;
@@ -86,14 +87,12 @@ class Save extends Action
         $this->_rebuiltModel = $rebuiltModel;
     }
 
-    /**
-     * @return mixed
-     */
     public function execute()
     {
+        ini_set('memory_limit', '2048M');
+
         $storeManager = $this->_objectManager->get('Magento\Store\Model\StoreManagerInterface');
         $storeId = $storeManager->getStore()->getStoreId();
-        ini_set('memory_limit', '2048M');
         $importSettings = array();
         $importParams = $this->getRequest()->getParam('import');
         foreach ($importParams as $name => $value) {
@@ -101,6 +100,10 @@ class Save extends Action
                 $importSettings[$name] = $value;
             }
         }
+
+        $resultRedirect = $this->resultFactory->create(ResultFactory::TYPE_REDIRECT);
+        $resultRedirect->setPath('customimport/import/index');
+
         /*if ($imageUploadDirectory) {
             $importSettings['import_images_file_dir'] = $imageUploadDirectory;
         }*/
@@ -119,7 +122,7 @@ class Save extends Action
                 $result = $uploader->save(
                     $importDir , $importedFileName
                 );
-            } catch (\Exception $e) {
+            } catch (LocalizedException $e) {
                 $importAllowed = false;
                 if ($e->getCode() == 0) {
                     $this->messageManager->addError($e->getMessage());
@@ -127,33 +130,35 @@ class Save extends Action
             }
         }
 
-        if ($importAllowed) {
-            $this->importModel->setCsvFile($importedFileName);
-            $this->importModel->process($importSettings);
-            if (count($this->importModel->errors) == 0) {
-                $this->_messageManager->addSuccess(__(self::SUCCESS_MESSAGE));
-            } else {
-                foreach ($this->importModel->errors as $error) {
-                    if (is_array($error)) {
-                        $error = implode(' - ', $error);
+        try {
+            if ($importAllowed) {
+                // Determining that import going from Custom Import Form
+                $this->coreRegistry->register($this->importModel::REGISTER_KEY_FROM, 1);
+
+                $this->importModel->setCsvFile($importedFileName);
+                $this->importModel->process($importSettings);
+                if (count($this->importModel->errors) == 0) {
+                    $this->_messageManager->addSuccess(__(self::SUCCESS_MESSAGE));
+                } else {
+                    foreach ($this->importModel->errors as $error) {
+                        if (is_array($error)) {
+                            $error = implode(' - ', $error);
+                        }
+                        $this->_messageManager->addErrorMessage($error);
                     }
-                    $this->_messageManager->addErrorMessage($error);
                 }
+            }
+
+//            $resultMessage = $this->_rebuiltModel->rebuildProductUrlRewrites();
+//            $this->_messageManager->addSuccess(__($resultMessage));
+
+            $this->reindex();
+        } catch (LocalizedException $e) {
+            if ($e->getCode() == 0) {
+                $this->messageManager->addError($e->getMessage());
             }
         }
 
-        $resultMessage = $this->_rebuiltModel->rebuildProductUrlRewrites();
-        $this->_messageManager->addSuccess(__($resultMessage));
-
-        $resultRedirect = $this->resultFactory->create(ResultFactory::TYPE_REDIRECT);
-        $resultRedirect->setPath('customimport/import/index');
-        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-        $model = $objectManager->create('\IntechSoft\CustomImport\Model\Attributes');
-
-
-        $model->convertColorToSwatches($storeId);
-        $model->convertSizeToSwatches($storeId);
-        $this->reindex();
         return $resultRedirect;
     }
 
@@ -170,15 +175,15 @@ class Save extends Action
     }
 
     /**
-     * Perform full reindex
+     * Perform reindex
      */
     private function reindex()
     {
         foreach ($this->indexerCollectionFactory->create()->getItems() as $indexer) {
+            /* @var $indexer \Magento\Indexer\Model\Indexer */
             if ($indexer->getStatus() != 'valid'){
-                $indexer->reindexAll();
+                $indexer->reindexRow($indexer->getIndexerId());
             }
         }
     }
-
 }

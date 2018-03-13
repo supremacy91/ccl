@@ -1,13 +1,20 @@
 <?php
 
 namespace IntechSoft\CustomImport\Model;
-use \Magento\Framework\App\Filesystem\DirectoryList;
-use \Magento\ImportExport\Model\Import\Adapter as ImportAdapter;
-use \Magento\Eav\Model\Config;
 
-class Attributes extends \Magento\Catalog\Model\AbstractModel
+use \Magento\Framework\App\Filesystem\DirectoryList;
+use \Magento\Eav\Model\Config;
+use \Magento\Catalog\Model\Product as ProductEntity;
+use \Magento\Catalog\Model\AbstractModel;
+
+class Attributes extends AbstractModel
 {
     const ATTRIBUTE_IMAGE_FOLDER = 'attribute/swatch';
+
+    /**
+     * @var \Magento\UrlRewrite\Service\V1\Data\UrlRewriteFactory
+     */
+    private $_urlRewriteFactory;
 
     /**
      * @var \Magento\Eav\Model\ResourceModel\Entity\Attribute\Option\CollectionFactory
@@ -96,7 +103,8 @@ class Attributes extends \Magento\Catalog\Model\AbstractModel
     /**
      * @var array
      */
-    protected $_selectAttributes = ['color', 'size', 'brand', 'brand_2'];
+//    protected $_selectAttributes = ['color', 'size', 'brand', 'brand_2'];
+    protected $_selectAttributes = ['color', 'size', 'brand', 'brand_2', 'color_hex'];
 
     /**
      * @var array
@@ -208,7 +216,7 @@ class Attributes extends \Magento\Catalog\Model\AbstractModel
         $this->_entityTypeId = $this->objectManager->create(
             'Magento\Eav\Model\Entity'
         )->setType(
-            \Magento\Catalog\Model\Product::ENTITY
+            ProductEntity::ENTITY
         )->getTypeId();
     }
 
@@ -318,10 +326,9 @@ class Attributes extends \Magento\Catalog\Model\AbstractModel
         }
         $attribute = $this->attributeFactory->create();
 
-        $attribute->loadByCode(\Magento\Catalog\Model\Product::ENTITY, $attributeCode);
+        $attribute->loadByCode(ProductEntity::ENTITY, $attributeCode);
 
-        // todo: find out about possibility delete "color" and "size" attributes
-
+        // TODO: find out about possibility delete "color" and "size" attributes
         if (isset($this->attrbuteSettings['clear_select_attributes']) && $this->attrbuteSettings['clear_select_attributes'] && $type == 'select') {
             $this->_attributeUninstaller->uninstallAttribute($attribute->getAttributeId());
         }
@@ -366,14 +373,13 @@ class Attributes extends \Magento\Catalog\Model\AbstractModel
 	
 	protected function updateUrlKey($model)
     {
-		$objectManager = \Magento\Framework\App\ObjectManager::getInstance();
         $id = $model->getId();
 
         $url_key = $model->getUrlKey();
         $storeId = 0;
 
         if (is_null($url_key) || !is_string($url_key)) {
-            throw new \Magento\Framework\Exception\LocalizedException(__("Unknown Error"));
+            throw new \Magento\Framework\Exception\LocalizedException(__("Unknown Error: method - udpateUrlKey()"));
         }
 
         if ($storeId !== null) {
@@ -393,13 +399,13 @@ class Attributes extends \Magento\Catalog\Model\AbstractModel
                 $id = $model->getId();
                 if ($storeId == 0) {
                     foreach ($this->_storeConfig->getStoreManager()->getStores() as $store) {
-                        $objectManager->create('Magento\UrlRewrite\Helper\UrlRewrite')->validateRequestPath($url_key);
+                        $this->objectManager->create('Magento\UrlRewrite\Helper\UrlRewrite')->validateRequestPath($url_key);
                         $urls[] = $this->createUrlRewrite($store->getId(), $url_key, $id);
                     }
                     $this->_urlPersist->replace($urls);
                 } else {
 
-                    $objectManager->get('Magento\UrlRewrite\Helper\UrlRewrite')->validateRequestPath($url_key);
+                    $this->objectManager->get('Magento\UrlRewrite\Helper\UrlRewrite')->validateRequestPath($url_key);
                     $url[] = $this->createUrlRewrite($storeId, $url_key, $id);
 
                     $this->_urlPersist->replace($url);
@@ -410,8 +416,15 @@ class Attributes extends \Magento\Catalog\Model\AbstractModel
             return true;
         }
     }
-	
-	protected function createUrlRewrite($storeId, $url_key, $id, $redirectType = 0)
+
+    /**
+     * @param     $storeId
+     * @param     $url_key
+     * @param     $id
+     * @param int $redirectType
+     * @return mixed
+     */
+    protected function createUrlRewrite($storeId, $url_key, $id, $redirectType = 0)
     {
         return $this->_urlRewriteFactory->create()->setStoreId($storeId)
             ->setEntityType('manufacturer')
@@ -433,11 +446,10 @@ class Attributes extends \Magento\Catalog\Model\AbstractModel
      * @throws \Magento\Framework\Exception\NoSuchEntityException
      * @throws \Magento\Framework\Exception\StateException
      */
-
     public function customPrepareOptions($attribute) {
             if ($newOptions = $this->getNewOptions($attribute)){
                 $attributeName = $attribute;
-                $attribute = $this->_attributeRepository->get('catalog_product', $attributeName);
+                $attribute = $this->_attributeRepository->get(ProductEntity::ENTITY, $attributeName);
                 $attributeId = $attribute->getAttributeId();
                 $attributeCode = $attribute->getAttributeCode();
 
@@ -483,6 +495,14 @@ class Attributes extends \Magento\Catalog\Model\AbstractModel
             }
     }
 
+    /**
+     * @param $attribute
+     * @throws \Exception
+     * @throws \Magento\Framework\Exception\InputException
+     * @throws \Magento\Framework\Exception\LocalizedException
+     * @throws \Magento\Framework\Exception\NoSuchEntityException
+     * @throws \Magento\Framework\Exception\StateException
+     */
     public function prepareOptions($attribute)
     {
         if ($newOptions = $this->getNewOptions($attribute)){
@@ -497,8 +517,9 @@ class Attributes extends \Magento\Catalog\Model\AbstractModel
                 $option['value'][$value][0]=$value;
             }
 
-                $eavSetup = $this->objectManager->create('\Magento\Eav\Setup\EavSetup');
-                $eavSetup->addAttributeOption($option);
+            //# Insert new option values to EAV
+            $eavSetup = $this->objectManager->create('\Magento\Eav\Setup\EavSetup');
+            $eavSetup->addAttributeOption($option);
 
             foreach ($newOptions as $optionName) {
                 if($attributeCode == 'brand') {
@@ -514,12 +535,10 @@ class Attributes extends \Magento\Catalog\Model\AbstractModel
                     $proceed = true;
                 }
                 if($proceed) {
-
-                  
-                    if($attribute->getattributeCode() == 'color_hex') {
-                        print_r($newOptions);
-                        exit;
-                    }
+//                    if($attribute->getAttributeCode() == 'color_hex') {
+//                        print_r($newOptions);
+//                        exit;
+//                    }
 
                     /*Custom code to add brand in biztech module*/
                     if($attribute->getattributeCode() == 'brand') {
@@ -558,7 +577,9 @@ class Attributes extends \Magento\Catalog\Model\AbstractModel
         }
     }
 
-
+    /*
+     * @deprecated
+     */
     public function prepareOptions1($attribute)
     {		
         if ($newOptions = $this->getNewOptions($attribute)){
@@ -723,14 +744,22 @@ class Attributes extends \Magento\Catalog\Model\AbstractModel
         }
     }
 
+
     /**
-     * return new options for attribute type select
+     * Return new options for attribute type select.
+     *
      * @param $attributeName
      * @return array|bool
+     * @throws \Magento\Framework\Exception\InputException
+     * @throws \Magento\Framework\Exception\NoSuchEntityException
+     * @throws \Magento\Framework\Exception\StateException
      */
     protected function getNewOptions($attributeName)
     {
-        $newOptions = array();
+        if ($attributeName && !$attributeName->getAttributeCode()) {
+            return false;
+        }
+
         $attributeId = $this->_attributeRepository->get('catalog_product', $attributeName)->getAttributeId();
         $options = $this->_attributeOptionManagement->getItems('catalog_product', $attributeId);
         $attributeIndex = $this->getColumnImdexByName($attributeName->getAttributeCode());
@@ -748,7 +777,7 @@ class Attributes extends \Magento\Catalog\Model\AbstractModel
 
     public function convertSizeToSwatches($storeId)
     {
-        $attribute = $this->_attributeRepository->get(\Magento\Catalog\Model\Product::ENTITY, 'size');
+        $attribute = $this->_attributeRepository->get(ProductEntity::ENTITY, 'size');
         if (!$attribute) {
             return;
         }
@@ -759,12 +788,15 @@ class Attributes extends \Magento\Catalog\Model\AbstractModel
     }
 
 
+    /**
+     * @throws \Magento\Framework\Exception\NoSuchEntityException
+     */
     public function convertColorToSwatches()
     {
         $colorMap = $this->_registry->registry('color_data');
         $this->_registry->unregister('color_data');
         if($colorMap) {
-            $attribute = $this->_attributeRepository->get(\Magento\Catalog\Model\Product::ENTITY, 'color');
+            $attribute = $this->_attributeRepository->get(ProductEntity::ENTITY, 'color');
             if (!$attribute) {
                 return;
             }
@@ -876,5 +908,4 @@ class Attributes extends \Magento\Catalog\Model\AbstractModel
         }
         return $optionSwatch;
     }
-
 }

@@ -4,14 +4,18 @@ namespace IntechSoft\CustomImport\Helper;
 
 use Magento\Framework\App\Helper\Context;
 use Magento\Framework\App\Helper\AbstractHelper;
+use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\ObjectManagerInterface;
 use Magento\Eav\Model\Entity\Attribute\SetFactory;
 use Magento\Framework\Registry;
 use Magento\Framework\App\Filesystem\DirectoryList;
+use Magento\ConfigurableProduct\Model\Product\Type\Configurable as TypeConfigurable;
+use Magento\Catalog\Model\Product\Type as ProductType;
 
 class Import extends AbstractHelper
 {
     const IMAGE_URL_TO_CUT = 'https://calexis.nl/userfiles/files';
+    const SPECIAL_LETTER = 'c';
 
     protected $_registry;
     protected $objectManager;
@@ -33,7 +37,7 @@ class Import extends AbstractHelper
     );
     protected $standardAttributes = array(
         'attribute_set_code' => 'Default',
-        'product_type' => 'simple',
+        'product_type' => ProductType::TYPE_SIMPLE,
         'product_websites' => 'base',
         'is_in_stock' => 1,
         'manage_stock' => 0,
@@ -139,39 +143,44 @@ class Import extends AbstractHelper
 
     public function getConvertedData($data)
     {
-        $this->standardAttributes['product_type'] = 'simple';
+        $this->standardAttributes['product_type'] = ProductType::TYPE_SIMPLE;
         $convertedData = array();
 
-        $counter = 0;
-        foreach ($data as $index => $item) {
+        try {
+            $counter = 0;
+            foreach ($data as $index => $item) {
 
-            if (!$index) {
-                $convertedData[] = $this->headers;
-                continue;
-            }
+                if (!$index) {
+                    $convertedData[] = $this->headers;
+                    continue;
+                }
 
-            $preparedItems = array();
-            $this->itemImage = '';
-            for($i = 0, $j = count($this->headers); $i < $j; $i++) {
-                $defaultValue = $this->checkDefaultValue($this->headers[$i]);
-                if (!isset($item[$i]) && $defaultValue !== false) {
-                    $preparedItems[] = $this->prepareItem($defaultValue, $this->headers[$i]);
-                } else {
-                    if($this->headers[$i] == 'sku') {
-                        $preparedItems[] = 'c' . $this->prepareItem($item[$i], $this->headers[$i]);
+                $preparedItems = array();
+                $this->itemImage = '';
+                for ($i = 0, $j = count($this->headers); $i < $j; $i++) {
+                    $defaultValue = $this->checkDefaultValue($this->headers[$i]);
+                    if (!isset($item[$i]) && $defaultValue !== false) {
+                        $preparedItems[] = $this->prepareItem($defaultValue, $this->headers[$i]);
                     } else {
-                        $preparedItems[] = @$this->prepareItem($item[$i], $this->headers[$i]);
+                        if ($this->headers[$i] == 'sku') {
+                            $preparedItems[] = self::SPECIAL_LETTER . $this->prepareItem($item[$i], $this->headers[$i]);
+                        } else {
+                            $preparedItems[] = $this->prepareItem($item[$i], $this->headers[$i]);
+                        }
                     }
                 }
+                $convertedData[] = $preparedItems;
+                $counter++;
             }
-            $convertedData[] = $preparedItems;
-            $counter++;
-        }
 
-        $convertedData = $this->checkNameAttribute($convertedData);
-        $convertedData = $this->checkUrlKeyAttribute($convertedData);
-        $convertedData = $this->addDefaultCategory($convertedData);
-        $convertedData = $this->addExtraBrand2($convertedData);
+            $convertedData = $this->checkNameAttribute($convertedData);
+            $convertedData = $this->checkUrlKeyAttribute($convertedData);
+            $convertedData = $this->addDefaultCategory($convertedData);
+            $convertedData = $this->addExtraBrand2($convertedData);
+        } catch (LocalizedException $e) {
+            $this->_logger->error(__METHOD__);
+            $this->_logger->error($e->getMessage());
+        }
 
         return $convertedData;
     }
@@ -521,7 +530,7 @@ class Import extends AbstractHelper
         $variaionsKey = array_search('configurable_variations', $this->headers);
         $skuKey       = array_search('sku', $this->headers);
         $configurableVariation = '';
-        $this->standardAttributes['product_type'] = 'configurable';
+        $this->standardAttributes['product_type'] = TypeConfigurable::TYPE_CODE;
         $this->standardAttributes['visibility'] = 'Catalog| Search';
         $countElements = count($data) - 1;
 
@@ -551,12 +560,12 @@ class Import extends AbstractHelper
                     $convertedData[$counter][$variaionsKey] = $configurableVariation;
                 }
                 $configurableVariation = '';
-                $configurableVariation .= 'sku='. 'c' . (string)$this->prepareItem($item[$skuKey]) . ',color='.$this->prepareItem($item[$colorKey]) . ',size='.$this->prepareItem($item[$sizeKey]);
+                $configurableVariation .= 'sku='. self::SPECIAL_LETTER . (string)$this->prepareItem($item[$skuKey]) . ',color='.$this->prepareItem($item[$colorKey]) . ',size='.$this->prepareItem($item[$sizeKey]);
                 $group = $item[$groupKey];
                 $convertedData[] = $preparedItems;
                 $counter++;
             }else{
-                $configurableVariation .= '|sku='. 'c' . (string)$this->prepareItem($item[$skuKey]) . ',color='.$this->prepareItem($item[$colorKey]) . ',size='.$this->prepareItem($item[$sizeKey]);
+                $configurableVariation .= '|sku='. self::SPECIAL_LETTER . (string)$this->prepareItem($item[$skuKey]) . ',color='.$this->prepareItem($item[$colorKey]) . ',size='.$this->prepareItem($item[$sizeKey]);
             }
             if($countElements == $index && $configurableVariation){
                 $convertedData[$counter][$variaionsKey] = $configurableVariation;
