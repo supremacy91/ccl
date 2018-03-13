@@ -72,26 +72,34 @@ abstract class AbstractDataAction
             $url_key = 'merken/'.$manufacturer->getUrlKey();
 
             $parentModel = $this->_manufacturertextModel->getCollection()->addFieldToFilter('manufacturer_id', $id)
-                        ->addFieldToFilter('store_id', 0)->load();
-            $parentText = $parentModel->getData()[0];
+                ->addFieldToFilter('store_id', 0)
+                ->getFirstItem();
+
+            $parentText = $parentModel->getData();
             array_shift($parentText);
 
-            foreach ($this->_storeConfig->getStoreManager()->getStores() as $store) {
-                $collectionText = $this->_manufacturertextModel->getCollection()
-                                    ->addFieldToFilter('manufacturer_id', $id)
-                                    ->addFieldToFilter('store_id',$store->getId())
-                                    ->load();
-                $text = $collectionText->getData();
+            if ($parentText) {
+                foreach ($this->_storeConfig->getStoreManager()->getStores() as $store) {
+                    $collectionText = $this->_manufacturertextModel->getCollection()
+                        ->addFieldToFilter('manufacturer_id', $id)
+                        ->addFieldToFilter('store_id', $store->getId())
+                        ->load();
 
-                if( is_array($text) && !isset($text[0]) ){
-                    $storeModel = $this->_manufacturertextModel;
-                    $storeModel->setData($parentText)->setStoreId($store->getId());
-                    $storeModel->save();
-                    $urls[] = $this->createUrlRewrite($store->getId(), $storeModel->getUrlKey(), $id);
+                    $text = $collectionText->getData();
+
+                    if (is_array($text) && !isset($text[0])) {
+                        $storeModel = $this->_manufacturertextModel;
+                        $storeModel->setData($parentText)
+                            ->setStoreId($store->getId())
+                            ->save();
+
+                        $urls[] = $this->createUrlRewrite($store->getId(), $storeModel->getUrlKey(), $id);
+                    }
                 }
             }
         }
-            $this->_urlPersist->replace($urls);
+
+        $this->_urlPersist->replace($urls);
     }
 
     protected function createUrlRewrite($storeId, $url_key, $id, $redirectType = 0) {

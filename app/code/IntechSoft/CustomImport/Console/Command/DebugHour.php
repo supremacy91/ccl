@@ -243,6 +243,8 @@ class DebugHour extends Command
 //                }
             }
 
+            // Require to reindex the invalid state.
+            $importModel->performReindex();
 
 //            if (count($importModel->errors) == 0) {
 //                $this->_logger->info(self::SUCCESS_MESSAGE . $file);

@@ -367,7 +367,7 @@ class Import extends AbstractModel
         foreach ($this->indexerCollectionFactory->create()->getItems() as $indexer) {
             /* @var $indexer \Magento\Indexer\Model\Indexer */
             if ($indexer->getStatus() != 'valid'){
-                $indexer->reindexRow($indexer->getIndexerId());
+                $indexer->reindexRow($indexer->getId());
             }
         }
     }

@@ -523,142 +523,54 @@ class Attributes extends AbstractModel
 
             foreach ($newOptions as $optionName) {
                 if($attributeCode == 'brand') {
-                    $proceed = false;
+//                    $proceed = false;
                     $collection = $this->_manufacturerModel->getCollection()
-                        ->addFieldToFilter('manufacturer_name', $optionName)->getData();
-                    if (count($collection) > 0) {
-                        $proceed = false;
-                    } else {
-                        $proceed = true;
-                    }
+                        ->addFieldToFilter('manufacturer_name', $optionName)
+                        ->getSize();
+
+                   $proceed = !($collection > 0);
                 } else {
                     $proceed = true;
                 }
                 if($proceed) {
-//                    if($attribute->getAttributeCode() == 'color_hex') {
-//                        print_r($newOptions);
-//                        exit;
-//                    }
-
                     /*Custom code to add brand in biztech module*/
                     if($attribute->getattributeCode() == 'brand') {
                         $data = array();
                         $data['manufacturer_name'] = $optionName;
                         $data['brand_name'] = $optionName;
                         $data['url_key'] = $this->_helperData->clearUrlKey($optionName);
-                        $model = $this->_manufacturerModel->setData($data)->save();
-                        if ($model->getManufacturerId()) {
-                            if ($this->updateUrlKey($model) == null) {
-                                return;
-                            }
-                        }
-                        $model->save();
+
+                        $model = $this->_manufacturerModel
+                            ->setData($data)
+                            ->save();
+
+//                        if ($model->getManufacturerId()) {
+//                            if ($this->updateUrlKey($model) == null) {
+//                                return;
+//                            }
+//                        }
+
+                        $manufacturerId = $model->getManufacturerId();
+                        unset($model);
+
                         $collection_text = $this->_manufacturertextModel
                             ->getCollection()
-                            ->addFieldToFilter('manufacturer_id', $model->getManufacturerId());
+                            ->addFieldToFilter('manufacturer_id', $manufacturerId)
+                            ->getSize();
 
-                        $this->_manufacturertextModel->setData($data)
-                            ->setManufacturerId($model->getManufacturerId())->setStoreId(0)->setStatus(1);
-                        $this->_manufacturertextModel->save();
-                        foreach ($this->_storeConfig->getStoreManager()->getStores() as $store) {
-                            $this->_manufacturertextModel->setData($data)
-                                ->setManufacturerId($model->getManufacturerId())
-                                ->setStoreId($store->getId())
-                                ->setStatus(1);
-
+                        if ($collection_text === 0) {
+                            $this->_manufacturertextModel->setData($data);
+                            $this->_manufacturertextModel->setManufacturerId($manufacturerId);
+                            $this->_manufacturertextModel->setDescription('<p>'.$optionName.'</p>');
+                            $this->_manufacturertextModel->setStoreId(0);
+                            $this->_manufacturertextModel->setStatus(1);
                             $this->_manufacturertextModel->save();
+
+                            $this->_manufacturertextModel->clearInstance();
                         }
-                        $this->_manufacturerModel->save();
-                        $this->_manufacturertextModel->save();
                     }
                     /*Custom code to add brand in biztech module*/
                 }
-            }
-        }
-    }
-
-    /*
-     * @deprecated
-     */
-    public function prepareOptions1($attribute)
-    {		
-        if ($newOptions = $this->getNewOptions($attribute)){
-            $attributeName = $attribute;
-            $attribute = $this->_attributeRepository->get('catalog_product', $attributeName);
-            $attributeId = $attribute->getAttributeId();
-            $attributeCode = $attribute->getAttributeCode();
-
-
-            foreach ($newOptions as $optionName) {
-				if($attributeCode == 'brand') {
-					$proceed = false;
-					$collection = $this->_manufacturerModel->getCollection()
-						->addFieldToFilter('manufacturer_name', $optionName)->getData();
-					if (count($collection) > 0) {
-						$proceed = false;
-					} else {
-						$proceed = true;
-					}
-				} else {
-					$proceed = true;
-				}
-				if($proceed) {
-					$optionLabel = $this->optionLabelFactory->create();
-                    //$optionLabel = $this->optionFactory->create();
-					$optionLabel->setStoreId(0);
-					$optionLabel->setLabel($optionName);
-					//$optionLabel->setDefault($optionName);
-
-					$option = $this->optionFactory->create();
-					$option->setLabel($optionLabel);
-					$option->setStoreLabels([$optionLabel]);
-					$option->setSortOrder(0);
-					$option->setIsDefault(false);
-
-                    //$attribute->addData(array('option' => $option));
-                    //$attribute->save();
-
-					if (!$this->_attributeOptionManagement->add('catalog_product', $attributeCode, $option)) {
-						$this->allowToContinueImport;
-					}
-					if($attribute->getattributeCode() == 'color_hex') {
-						print_r($newOptions);
-						exit;
-					}
-
-					/*Custom code to add brand in biztech module*/
-					if($attribute->getattributeCode() == 'brand') {
-						$data = array();
-						$data['manufacturer_name'] = $optionName;
-						$data['brand_name'] = $optionName;
-						$data['url_key'] = $this->_helperData->clearUrlKey($optionName);
-						$model = $this->_manufacturerModel->setData($data)->save();
-						if ($model->getManufacturerId()) {
-							if ($this->updateUrlKey($model) == null) {
-								return;
-							}
-						}
-						$model->save();
-						$collection_text = $this->_manufacturertextModel
-								->getCollection()
-								->addFieldToFilter('manufacturer_id', $model->getManufacturerId());
-
-						$this->_manufacturertextModel->setData($data)
-							->setManufacturerId($model->getManufacturerId())->setStoreId(0)->setStatus(1);
-						$this->_manufacturertextModel->save();
-						foreach ($this->_storeConfig->getStoreManager()->getStores() as $store) {
-							$this->_manufacturertextModel->setData($data)
-								->setManufacturerId($model->getManufacturerId())
-								->setStoreId($store->getId())
-								->setStatus(1);
-
-							$this->_manufacturertextModel->save();
-						}
-						$this->_manufacturerModel->save();
-						$this->_manufacturertextModel->save();
-					}
-					/*Custom code to add brand in biztech module*/
-				}
             }
         }
     }
@@ -907,5 +819,61 @@ class Attributes extends AbstractModel
             $optionSwatch['value'][$optionKey] = array($storeId=>$optionValue);
         }
         return $optionSwatch;
+    }
+
+    public function debugMethod()
+    {
+        /*if($attribute->getattributeCode() == 'brand') {
+            $data = array();
+            $data['manufacturer_name'] = $optionName;
+            $data['brand_name'] = $optionName;
+            $data['url_key'] = $this->_helperData->clearUrlKey($optionName);
+
+            $model = $this->_manufacturerModel
+                ->setData($data)
+                ->save();
+
+            if ($model->getManufacturerId()) {
+                if ($this->updateUrlKey($model) == null) {
+                    return;
+                }
+            }
+            $manufacturerId = $model->getManufacturerId();
+            unset($model);
+
+            $collection_text = $this->_manufacturertextModel
+                ->getCollection()
+                ->addFieldToFilter('manufacturer_id', $manufacturerId)
+                ->getSize();
+
+            if ($collection_text === 0) {
+                unset($collection_text);
+
+//                            $this->_manufacturertextModel->isObjectNew(true);
+//                            $this->_manufacturertextModel->setData($data);
+//                            $this->_manufacturertextModel->setManufacturerId($manufacturerId);
+//                            $this->_manufacturertextModel->setDescription('<p>'.$optionName.'</p>');
+//                            $this->_manufacturertextModel->setStoreId(0);
+//                            $this->_manufacturertextModel->setStatus(1);
+//                            $this->_manufacturertextModel->save();
+//
+//                            $this->_manufacturertextModel->clearInstance();
+
+                foreach ($this->_storeConfig->getStoreManager()->getStores() as $store) {
+                    $this->_manufacturertextModel
+                        ->setData($data)
+                        ->setManufacturerId($manufacturerId)
+                        ->setStoreId($store->getId())
+                        ->setStatus(1);
+
+                    $this->_manufacturertextModel->save();
+                }
+
+                $this->_manufacturertextModel->clearInstance();
+            }
+
+//                        $this->_manufacturerModel->save();
+//                        $this->_manufacturertextModel->save();
+        }*/
     }
 }
