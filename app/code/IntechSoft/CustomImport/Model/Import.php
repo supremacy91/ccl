@@ -11,10 +11,18 @@ use Magento\Framework\ObjectManagerInterface;
 use Magento\Framework\Filesystem;
 use Magento\Framework\File\Csv;
 use Magento\Framework\Registry;
+use Magento\Indexer\Model\Indexer\CollectionFactory as IndexerCollectionFactory;
 
 class Import extends AbstractModel
 {
+    /**
+     * Determine importing via CLI
+     */
     const REGISTER_KEY               = 'isIntechsoftCustomImportModule';
+
+    /**
+     * Determine importing via Custom Import Form
+     */
     const REGISTER_KEY_FROM          = 'isIntechsoftCustomImportViaForm';
 
     const MSG_SUCCESS                = 'Successfully';
@@ -39,6 +47,7 @@ class Import extends AbstractModel
 
     protected $_preparedCsvFile;
     protected $_errorMessage;
+    private $indexerCollectionFactory;
 
     /**
      * @var \IntechSoft\CustomImport\Helper\Import
@@ -83,18 +92,20 @@ class Import extends AbstractModel
      */
     protected $_exportLogger;
 
-    /**
-     * Import constructor.
-     * @param \IntechSoft\CustomImport\Helper\Import $importHelper
-     * @param \IntechSoft\CustomImport\Model\Attributes $attributesModel
-     * @param \Magento\Framework\App\Filesystem\DirectoryList $directoryList
-     * @param \Magento\Framework\ObjectManagerInterface $objectManager
-     * @param \Magento\Framework\Filesystem $filesystem
-     * @param \Magento\Framework\Registry $registry
-     * @param \Magento\Framework\File\Csv $csvProcessor
-     */
     private static $count = 0;
 
+    /**
+     * Import constructor.
+     *
+     * @param HelperImport                              $importHelper
+     * @param \IntechSoft\CustomImport\Model\Attributes $attributesModel
+     * @param DirectoryList                             $directoryList
+     * @param ObjectManagerInterface                    $objectManager
+     * @param Filesystem                                $filesystem
+     * @param Csv                                       $csvProcessor
+     * @param Registry                                  $registry
+     * @param IndexerCollectionFactory                  $indexerCollectionFactory
+     */
     public function __construct(
         HelperImport $importHelper,
         Attributes $attributesModel,
@@ -102,7 +113,8 @@ class Import extends AbstractModel
         ObjectManagerInterface $objectManager,
         Filesystem $filesystem,
         Csv $csvProcessor,
-        Registry $registry
+        Registry $registry,
+        IndexerCollectionFactory $indexerCollectionFactory
     )
     {
         $this->filesystem      = $filesystem;
@@ -112,6 +124,7 @@ class Import extends AbstractModel
         $this->_registry       = $registry;
         $this->csvProcessor    = $csvProcessor;
         $this->objectManager   = $objectManager;
+        $this->indexerCollectionFactory = $indexerCollectionFactory;
 
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/' . $this::LOG_FILE);
         $this->_exportLogger = new \Zend\Log\Logger();
@@ -258,7 +271,6 @@ class Import extends AbstractModel
         $importModel = $this->objectManager->create('Magento\ImportExport\Model\Import')->setData($data);
 
         /** @var $source \Magento\ImportExport\Model\Import\Source\Csv */
-        //$this->_preparedCsvFile = '/var/www/html/magento2-test/var/import/calexis-stockfile-newwithheader-test.csv';
         $source = ImportAdapter::findAdapterFor(
             $this->_preparedCsvFile,
             $this->objectManager->create('Magento\Framework\Filesystem')->getDirectoryWrite(DirectoryList::ROOT),
@@ -328,11 +340,6 @@ class Import extends AbstractModel
                 '',
                 self::MSG_IMPORT_TERMINATED
             ];
-
-            /*if ($this->_stopOnError) {
-                $this->registry->register('import_terminated', true);
-                $this->stopImport();
-            }*/
         }
 
         return $this;
@@ -352,12 +359,16 @@ class Import extends AbstractModel
         return $data;
     }
 
-    /*protected function stopImport()
+    /**
+     * Perform reindex
+     */
+    public function performReindex()
     {
-        if (!($this->registry->registry('finish_data'))) {
-            $this->registry->register('finish_data', true);
+        foreach ($this->indexerCollectionFactory->create()->getItems() as $indexer) {
+            /* @var $indexer \Magento\Indexer\Model\Indexer */
+            if ($indexer->getStatus() != 'valid'){
+                $indexer->reindexRow($indexer->getIndexerId());
+            }
         }
-    }*/
-
-
+    }
 }

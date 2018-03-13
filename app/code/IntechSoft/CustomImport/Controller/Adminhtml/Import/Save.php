@@ -8,10 +8,21 @@ use \Magento\Framework\App\Filesystem\DirectoryList;
 use Magento\Framework\Registry;
 use Magento\Framework\Exception\LocalizedException;
 
+/**
+ * Class Save
+ *
+ * @package IntechSoft\CustomImport\Controller\Adminhtml\Import
+ */
 class Save extends Action
 {
+    /**
+     *
+     */
     const CUSTOM_IMPORT_DIR = 'import/current';
 
+    /**
+     *
+     */
     const SUCCESS_MESSAGE = 'Import finished successfully';
 
     /**
@@ -87,9 +98,15 @@ class Save extends Action
         $this->_rebuiltModel = $rebuiltModel;
     }
 
+    /**
+     * @return \Magento\Framework\App\ResponseInterface|\Magento\Framework\Controller\ResultInterface
+     */
     public function execute()
     {
         ini_set('memory_limit', '2048M');
+
+        $importAllowed = false;
+        $importedFileName = '';
 
         $storeManager = $this->_objectManager->get('Magento\Store\Model\StoreManagerInterface');
         $storeId = $storeManager->getStore()->getStoreId();
@@ -125,20 +142,22 @@ class Save extends Action
             } catch (LocalizedException $e) {
                 $importAllowed = false;
                 if ($e->getCode() == 0) {
-                    $this->messageManager->addError($e->getMessage());
+                    $this->messageManager->addErrorMessage($e->getMessage());
                 }
             }
         }
 
-        try {
-            if ($importAllowed) {
+        if ($importAllowed) {
+            try {
                 // Determining that import going from Custom Import Form
                 $this->coreRegistry->register($this->importModel::REGISTER_KEY_FROM, 1);
 
-                $this->importModel->setCsvFile($importedFileName);
-                $this->importModel->process($importSettings);
+                $this->importModel
+                    ->setCsvFile($importedFileName)
+                    ->process($importSettings);
+
                 if (count($this->importModel->errors) == 0) {
-                    $this->_messageManager->addSuccess(__(self::SUCCESS_MESSAGE));
+                    $this->_messageManager->addSuccessMessage(__(self::SUCCESS_MESSAGE));
                 } else {
                     foreach ($this->importModel->errors as $error) {
                         if (is_array($error)) {
@@ -147,17 +166,18 @@ class Save extends Action
                         $this->_messageManager->addErrorMessage($error);
                     }
                 }
-            }
 
-//            $resultMessage = $this->_rebuiltModel->rebuildProductUrlRewrites();
-//            $this->_messageManager->addSuccess(__($resultMessage));
+    //            $resultMessage = $this->_rebuiltModel->rebuildProductUrlRewrites();
+    //            $this->_messageManager->addSuccess(__($resultMessage));
 
-            $this->reindex();
-        } catch (LocalizedException $e) {
-            if ($e->getCode() == 0) {
-                $this->messageManager->addError($e->getMessage());
+                $this->importModel->performReindex();
+            } catch (LocalizedException $e) {
+                if ($e->getCode() == 0) {
+                    $this->messageManager->addErrorMessage($e->getMessage());
+                }
             }
         }
+
 
         return $resultRedirect;
     }
@@ -172,18 +192,5 @@ class Save extends Action
         $curDate = date('Y_m_d_H_i');
         $oldName = $oldName . '_' . $curDate . '.csv';
         return $oldName;
-    }
-
-    /**
-     * Perform reindex
-     */
-    private function reindex()
-    {
-        foreach ($this->indexerCollectionFactory->create()->getItems() as $indexer) {
-            /* @var $indexer \Magento\Indexer\Model\Indexer */
-            if ($indexer->getStatus() != 'valid'){
-                $indexer->reindexRow($indexer->getIndexerId());
-            }
-        }
     }
 }
