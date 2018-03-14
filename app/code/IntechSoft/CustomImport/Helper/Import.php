@@ -309,61 +309,99 @@ class Import extends AbstractHelper
         $typeKey = array_search('product_type', $this->headers);
         $data = array();
         $urlKey = false;
-            for($i = 0; $i < count($convertedData); $i++) {
-                if ($i == 0) {
-                    $data[$i] = $convertedData[$i];
-                    if(!in_array('url_key', $data[$i])){
-                        $urlKey = true;
-                        array_push($data[$i] , 'url_key');
-                    }
-                } else {
-                    $data[$i] = $convertedData[$i];
-                    if($urlKey) {
-                        if($convertedData[$i][$typeKey] == 'simple'){
-                            $this->_resources = \Magento\Framework\App\ObjectManager::getInstance()->get('Magento\Framework\App\ResourceConnection');
-                            $connection = $this->_resources->getConnection();
-                            $urlKey = array();
-                            $urlKey[$model->formatUrlKey($convertedData[$i][$this->getColumnImdexByName('brand')]. '-' . $convertedData[$i][$this->getColumnImdexByName('sku')])] = $convertedData[$i][$this->getColumnImdexByName('sku')];
-                            $urlKeyDuplicates = $this->getUrlKeyDuplicates($connection, $urlKey);
-                            $urlKey = $model->formatUrlKey($convertedData[$i][$this->getColumnImdexByName('brand')]. '-' . $convertedData[$i][$this->getColumnImdexByName('sku')]);
-
-                            if($urlKeyDuplicates){
-                                array_push($data[$i], '');
-                            } else {
-                                array_push($data[$i], $urlKey);
-                            }
-
-                        } else {
-                            $this->_resources = \Magento\Framework\App\ObjectManager::getInstance()->get('Magento\Framework\App\ResourceConnection');
-                            $connection = $this->_resources->getConnection();
-                            $urlKey = array();
-                            $urlKey[$model->formatUrlKey($convertedData[$i][$this->getColumnImdexByName('brand')]. '-' . $convertedData[$i][$this->getColumnImdexByName('group')])] = $convertedData[$i][$this->getColumnImdexByName('sku')];
-                            $urlKey[$model->formatUrlKey($convertedData[$i][$this->getColumnImdexByName('brand')]. '-' . $convertedData[$i][$this->getColumnImdexByName('group')].'-'.$convertedData[$i][$this->getColumnImdexByName('sku')])] = $convertedData[$i][$this->getColumnImdexByName('sku')];
-                            $urlKeyDuplicates = $this->getUrlKeyDuplicates($connection, $urlKey);
-                            $urlKey = $model->formatUrlKey($convertedData[$i][$this->getColumnImdexByName('brand')]. '-' . $convertedData[$i][$this->getColumnImdexByName('group')].'-'.$convertedData[$i][$this->getColumnImdexByName('sku')]);
-                            if($urlKeyDuplicates){
-                                array_push($data[$i], $urlKey);
-                            }else{
-                                array_push($data[$i], $urlKey);
-                            }
-                        }
-                    }elseif($convertedData[$i][$typeKey] != 'simple'){
+        for($i = 0; $i < count($convertedData); $i++) {
+            if ($i == 0) {
+                $data[$i] = $convertedData[$i];
+                if(!in_array('url_key', $data[$i])){
+                    $urlKey = true;
+                    array_push($data[$i] , 'url_key');
+                }
+            } else {
+                $data[$i] = $convertedData[$i];
+                if ($urlKey) {
+                    if ($convertedData[$i][$typeKey] === 'simple') {
                         $this->_resources = \Magento\Framework\App\ObjectManager::getInstance()->get('Magento\Framework\App\ResourceConnection');
-                        $connection= $this->_resources->getConnection();
+                        $connection = $this->_resources->getConnection();
                         $urlKey = array();
-                        $urlKey[$model->formatUrlKey($convertedData[$i][$this->getColumnImdexByName('brand')]. '-' . $convertedData[$i][$this->getColumnImdexByName('group')])] = $convertedData[$i][$this->getColumnImdexByName('sku')];
-                        $urlKey[$model->formatUrlKey($convertedData[$i][$this->getColumnImdexByName('brand')]. '-' . $convertedData[$i][$this->getColumnImdexByName('group')].'-'.$convertedData[$i][$this->getColumnImdexByName('sku')])] = $convertedData[$i][$this->getColumnImdexByName('sku')];
+                        $urlKey[$model->formatUrlKey($convertedData[$i][$this->getColumnImdexByName('brand')]. '-' . $convertedData[$i][$this->getColumnImdexByName('sku')])] = $convertedData[$i][$this->getColumnImdexByName('sku')];
                         $urlKeyDuplicates = $this->getUrlKeyDuplicates($connection, $urlKey);
-                        $urlKey = $model->formatUrlKey($convertedData[$i][$this->getColumnImdexByName('brand')]. '-' . $convertedData[$i][$this->getColumnImdexByName('group')].'-'.$convertedData[$i][$this->getColumnImdexByName('sku')]);
+                        $urlKey = $model->formatUrlKey($convertedData[$i][$this->getColumnImdexByName('brand')]. '-' . $convertedData[$i][$this->getColumnImdexByName('sku')]);
 
                         if($urlKeyDuplicates){
-                            array_push($data[$i], $urlKey);
-                        }else{
+                            array_push($data[$i], '');
+                        } else {
                             array_push($data[$i], $urlKey);
                         }
+
+                    } else {
+                        $this->_resources = \Magento\Framework\App\ObjectManager::getInstance()->get('Magento\Framework\App\ResourceConnection');
+                        $connection = $this->_resources->getConnection();
+
+                        $convDataBrand  = $convertedData[$i][$this->getColumnImdexByName('brand')];
+                        $convDataSku    = $convertedData[$i][$this->getColumnImdexByName('sku')];
+                        $convDataDesc  = $convertedData[$i][$this->getColumnImdexByName('short_description')];
+
+                        $convDataDesc = str_replace(array('/', ' '), '-', strtolower($convDataDesc));
+//                        $brandPlusDescPlusSku = $convDataBrand . '-' . $convDataGroup . '-'  . $convDataSku;
+
+                        $urlKey = [];
+                        $_key = $model->formatUrlKey($convDataBrand) . '-' . $convDataDesc . '-'  . $convDataSku;
+                        $urlKey[$_key] = $convDataSku;
+
+                        $urlKeyDuplicates = $this->getUrlKeyDuplicates($connection, $urlKey);
+
+                        if(count($urlKeyDuplicates)){
+                            array_push($data[$i], '');
+                        }else{
+                            $urlKey = $model->formatUrlKey($_key);
+                            array_push($data[$i], $urlKey);
+                        }
+                    }
+                } elseif ($convertedData[$i][$typeKey] !== 'simple') {
+                    /*$this->_resources = \Magento\Framework\App\ObjectManager::getInstance()->get('Magento\Framework\App\ResourceConnection');
+                    $connection= $this->_resources->getConnection();
+                    $urlKey = array();
+
+                    $convDataBrand  = $convertedData[$i][$this->getColumnImdexByName('brand')];
+                    $convDataSku    = $convertedData[$i][$this->getColumnImdexByName('sku')];
+                    $convDataGroup  = $convertedData[$i][$this->getColumnImdexByName('group')];
+
+                    $brandPlusGroup = $convDataBrand . '-' . $convDataGroup;
+                    $brandPlusGroupPlusSku = $brandPlusGroup . '-'  . $convDataSku;
+
+                    $urlKey[$model->formatUrlKey($brandPlusGroup)] = $convDataSku;
+                    $urlKey[$model->formatUrlKey($brandPlusGroupPlusSku)] = $convDataSku;
+                    $urlKeyDuplicates = $this->getUrlKeyDuplicates($connection, $urlKey);
+                    $urlKey = $model->formatUrlKey($brandPlusGroupPlusSku);
+
+                    if($urlKeyDuplicates){
+                        array_push($data[$i], $urlKey);
+                    }else{
+                        array_push($data[$i], $urlKey);
+                    }*/
+                    $this->_resources = \Magento\Framework\App\ObjectManager::getInstance()->get('Magento\Framework\App\ResourceConnection');
+                    $connection = $this->_resources->getConnection();
+
+                    $convDataBrand  = $convertedData[$i][$this->getColumnImdexByName('brand')];
+                    $convDataSku    = $convertedData[$i][$this->getColumnImdexByName('sku')];
+                    $convDataDesc  = $convertedData[$i][$this->getColumnImdexByName('short_description')];
+                    $convDataDesc = str_replace(array('/', ' '), '-', strtolower($convDataDesc));
+
+                    $urlKey = [];
+                    $_key = $model->formatUrlKey($convDataBrand) . '-' . $convDataDesc . '-'  . $convDataSku;
+                    $urlKey[$_key] = $convDataSku;
+
+                    $urlKeyDuplicates = $this->getUrlKeyDuplicates($connection, $urlKey);
+
+                    if(count($urlKeyDuplicates)){
+                        array_push($data[$i], '');
+                    }else{
+                        $urlKey = $model->formatUrlKey($_key);
+                        array_push($data[$i], $urlKey);
                     }
                 }
             }
+        }
 
         return $data;
     }
@@ -572,6 +610,7 @@ class Import extends AbstractHelper
             }
         }
         $convertedData = $this->checkNameAttribute($convertedData);
+        //configurable
         $convertedData = $this->checkUrlKeyAttribute($convertedData);
         $convertedData = $this->addDefaultCategory($convertedData);
         $convertedData = $this->addExtraBrand2($convertedData);

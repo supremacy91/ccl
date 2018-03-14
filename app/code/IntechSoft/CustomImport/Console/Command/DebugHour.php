@@ -245,34 +245,6 @@ class DebugHour extends Command
 
             // Require to reindex the invalid state.
             $importModel->performReindex();
-
-//            if (count($importModel->errors) == 0) {
-//                $this->_logger->info(self::SUCCESS_MESSAGE . $file);
-//
-//                /*** Moved to import History***/
-//                $src = $importedFileName;
-//                $archiveName = "completed_" . date('YmdHis') . "_" . $file;
-//                $dest = $this->_directoryList->getPath(DirectoryList::VAR_DIR) . "/import_history/" . $archiveName;
-//                $r = rename($src, $dest);
-//                if ($r) {
-//                    $this->_logger->info('Moved to import history');
-//                }
-//                /*** Moved to import History***/
-//
-//                //unlink($importDir. '/' .$file);
-//                $this->_urlRegenerateHelper->regenerateUrl();
-//            } else {
-//                foreach ($importModel->errors as $error) {
-//                    if (is_array($error)) {
-//                        $error = implode(' - ', $error);
-//                    }
-//                    $this->_logger->info($error);
-//                }
-//            }
-
-            /*if ($i <= 1) {
-                //  break;
-            }*/
         }
         $this->_logger->info('hourly cron finished at - ' . $this->_date->gmtDate('Y-m-d H:i:s'));
     }
