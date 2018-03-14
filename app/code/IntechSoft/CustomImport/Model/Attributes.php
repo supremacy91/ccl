@@ -548,7 +548,7 @@ class Attributes extends AbstractModel
 
         // ### Here - collect unique attribute options
         foreach ($collectedOptions as $attributeName => $options) {
-            $attributeIndex = $this->getColumnImdexByName($attributeName);
+            $attributeIndex = $this->getColumnIndexByName($attributeName);
             $this->_collectedAttributes[$attributeIndex] = array($attributeName => array_unique($options));
         }
     }
@@ -558,7 +558,7 @@ class Attributes extends AbstractModel
      * @param $name
      * @return array|bool|int|string
      */
-    public function getColumnImdexByName($name)
+    public function getColumnIndexByName($name)
     {
         if (in_array($name, $this->_selectAttributes)) {
             foreach ($this->_collectedAttributes as $index => $attribute) {
@@ -614,7 +614,7 @@ class Attributes extends AbstractModel
 
         $attributeId = $this->_attributeRepository->get('catalog_product', $attributeName)->getAttributeId();
         $options = $this->_attributeOptionManagement->getItems('catalog_product', $attributeId);
-        $attributeIndex = $this->getColumnImdexByName($attributeName->getAttributeCode());
+        $attributeIndex = $this->getColumnIndexByName($attributeName->getAttributeCode());
         $newOptions = $this->_collectedAttributes[$attributeIndex][$attributeName->getAttributeCode()];
         foreach($options as $option) {
             if (in_array($option->getLabel(), $newOptions)) {
