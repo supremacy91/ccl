@@ -6,6 +6,7 @@ class SaveProductEntityPlugin{
     protected $_stockRegistry;
     protected $_om;
     protected $_resource;
+    protected $_connection;
 
     public function __construct(
         \Magento\Framework\ObjectManagerInterface $om,
@@ -31,23 +32,31 @@ class SaveProductEntityPlugin{
         if ($registryFirstSaveImportFlag->registry('isFirstSaveImportFlag')) {
             return [$params];
         }
-        $this->connection = $this->_resource->getConnection('core_write');
-        $table=$this->_resource->getTableName('catalog_product_entity');
+        $registryFirstSaveImportFlag->register('isFirstSaveImportFlag', 1, false);
+        $this->_connection = $this->_resource->getConnection();
+        $table=$this->_resource->getTableName('cataloginventory_stock_item');
         $productCollection = $this->_om->create('Magento\Catalog\Model\ResourceModel\Product\Collection');
         foreach ($productCollection as $product) {
 
 
+            $id = $product->getEntityId();
+            /*$this->_connection->update(
+                $table,
+                ["qty"  => new \Zend_Db_Expr('0')],
+                ["item_id = $id"]
 
+            );*/
+            $query = "update " . $table . " set qty = 0 where product_id = " . $id;
+            $this->_connection->query($query);
+            //->where(
+            //   'item_id = ?', $product->getEntityId());
 
-            $product->setStockData(array(
-                    'use_config_manage_stock' => 0, //'Use config settings' checkbox
-                    'manage_stock' => 1, //manage stock
-                    'max_sale_qty' => 2, //Maximum Qty Allowed in Shopping Cart
+           /* $product->setStockData(array(
                     'is_in_stock' => 1, //Stock Availability
                     'qty' => 0 //qty
                 )
             );
-            $product->save();
+            $product->save();*/
 
 
 
