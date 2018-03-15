@@ -16,6 +16,7 @@ class SaveProductEntityPlugin
      * @var Registry
      */
     private $registry;
+
     /**
      * @var ResourceConnection
      */
@@ -49,7 +50,8 @@ class SaveProductEntityPlugin
      * @param               $result
      * @return mixed
      */
-    public function afterSaveProductEntity(ImportProduct $subject, $result){
+    public function afterSaveProductEntity(ImportProduct $subject, $result)
+    {
         if ($result instanceof ImportProduct) {
             $this->registry->register('importSuccessFlag', 1, true);
         }
