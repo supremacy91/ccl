@@ -40,9 +40,9 @@ class SaveProductEntityPlugin
         $this->resource = $resource;
         $this->registry = $registry;
 
-        $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/change_stock_plugin.log');
-        $this->logger = new \Zend\Log\Logger();
-        $this->logger->addWriter($writer);
+//        $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/change_stock_plugin.log');
+//        $this->logger = new \Zend\Log\Logger();
+//        $this->logger->addWriter($writer);
     }
 
     /**
