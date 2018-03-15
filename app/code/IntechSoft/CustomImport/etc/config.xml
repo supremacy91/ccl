@@ -5,6 +5,10 @@
             <emailGroup>
                 <template_id>customImportSection_emailGroup_email_id</template_id>
             </emailGroup>
+            <seoGroup>
+                <meta_title_prefix><![CDATA[- Calexis Schoenmode]]></meta_title_prefix>
+                <meta_description_prefix><![CDATA[online bestellen bij Calexis Schoenmode +100% merken Veilig (achteraf) betalen Voor 17.00 besteld = morgen in huis Gratis verzending]]></meta_description_prefix>
+            </seoGroup>
         </customImportSection>
     </default>
 </config>

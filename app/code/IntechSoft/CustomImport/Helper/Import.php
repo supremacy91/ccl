@@ -12,10 +12,17 @@ use Magento\Framework\App\Filesystem\DirectoryList;
 use Magento\ConfigurableProduct\Model\Product\Type\Configurable as TypeConfigurable;
 use Magento\Catalog\Model\Product\Type as ProductType;
 
+/**
+ * Class Import
+ *
+ * @package IntechSoft\CustomImport\Helper
+ */
 class Import extends AbstractHelper
 {
     const IMAGE_URL_TO_CUT = 'https://calexis.nl/userfiles/files';
     const SPECIAL_LETTER = 'c';
+    const CONFIG_META_TITLE_PATH = 'customImportSection/seoGroup/meta_title_prefix';
+    const CONFIG_META_DESCRIPTION_PATH = 'customImportSection/seoGroup/meta_description_prefix';
 
     protected $_registry;
     protected $objectManager;
@@ -24,6 +31,15 @@ class Import extends AbstractHelper
     protected $_resources;
     protected $_attributeSetFactory;
     protected $directory_list;
+
+    /**
+     * @var \Magento\Framework\App\Config\ScopeConfigInterface
+     */
+    protected $scopeConfig;
+
+    /**
+     * @var array
+     */
     protected $imagesColumnArray = array(
         'base_image',
         'small_image',
@@ -43,6 +59,8 @@ class Import extends AbstractHelper
         'manage_stock' => 0,
         'website_id' => 0,
         'product_online' => 1,
+        'meta_title' => '',
+        'meta_description' => '',
         'base_image' => '',
         'small_image' => '',
         'thumbnail_image' => '',
@@ -96,6 +114,8 @@ class Import extends AbstractHelper
         $this->objectManager = $objectManager;
         $this->_registry = $registry;
         parent::__construct($context);
+
+        $this->scopeConfig = $context->getScopeConfig();
     }
 
 
@@ -265,12 +285,12 @@ class Import extends AbstractHelper
         $typeKey = array_search('product_type',$this->headers);
         $data = array();
         $colorData = array();
-        if($nameColumnCount = $this->getColumnImdexByName('name')) {
+        if($nameColumnCount = $this->getColumnIndexByName('name')) {
             for($i = 1; $i < count($convertedData); $i++)
             {
-                $convertedData[$i][$nameColumnCount] = $convertedData[$i][$this->getColumnImdexByName('brand')];
-                if(!array_key_exists($convertedData[$i][$this->getColumnImdexByName('color')], $colorData)){
-                    $colorData[$convertedData[$i][$this->getColumnImdexByName('color')]] = $convertedData[$i][$this->getColumnImdexByName('color_hex')];
+                $convertedData[$i][$nameColumnCount] = $convertedData[$i][$this->getColumnIndexByName('brand')];
+                if(!array_key_exists($convertedData[$i][$this->getColumnIndexByName('color')], $colorData)){
+                    $colorData[$convertedData[$i][$this->getColumnIndexByName('color')]] = $convertedData[$i][$this->getColumnIndexByName('color_hex')];
                 }
             }
             $data = $convertedData;
@@ -284,12 +304,12 @@ class Import extends AbstractHelper
                 } else {
                     $data[$i] = $convertedData[$i];
                     if($convertedData[$i][$typeKey] == 'simple'){
-                        array_push($data[$i], $convertedData[$i][$this->getColumnImdexByName('brand')]);
+                        array_push($data[$i], $convertedData[$i][$this->getColumnIndexByName('brand')]);
                     }else{
-                        array_push($data[$i], $convertedData[$i][$this->getColumnImdexByName('brand')]);
+                        array_push($data[$i], $convertedData[$i][$this->getColumnIndexByName('brand')]);
                     }
-                    if(!array_key_exists($convertedData[$i][$this->getColumnImdexByName('color')], $colorData)){
-                        $colorData[$convertedData[$i][$this->getColumnImdexByName('color')]] = $convertedData[$i][$this->getColumnImdexByName('color_hex')];
+                    if(!array_key_exists($convertedData[$i][$this->getColumnIndexByName('color')], $colorData)){
+                        $colorData[$convertedData[$i][$this->getColumnIndexByName('color')]] = $convertedData[$i][$this->getColumnIndexByName('color_hex')];
                     }
                 }
 
@@ -323,9 +343,9 @@ class Import extends AbstractHelper
                         $this->_resources = \Magento\Framework\App\ObjectManager::getInstance()->get('Magento\Framework\App\ResourceConnection');
                         $connection = $this->_resources->getConnection();
                         $urlKey = array();
-                        $urlKey[$model->formatUrlKey($convertedData[$i][$this->getColumnImdexByName('brand')]. '-' . $convertedData[$i][$this->getColumnImdexByName('sku')])] = $convertedData[$i][$this->getColumnImdexByName('sku')];
+                        $urlKey[$model->formatUrlKey($convertedData[$i][$this->getColumnIndexByName('brand')]. '-' . $convertedData[$i][$this->getColumnIndexByName('sku')])] = $convertedData[$i][$this->getColumnIndexByName('sku')];
                         $urlKeyDuplicates = $this->getUrlKeyDuplicates($connection, $urlKey);
-                        $urlKey = $model->formatUrlKey($convertedData[$i][$this->getColumnImdexByName('brand')]. '-' . $convertedData[$i][$this->getColumnImdexByName('sku')]);
+                        $urlKey = $model->formatUrlKey($convertedData[$i][$this->getColumnIndexByName('brand')]. '-' . $convertedData[$i][$this->getColumnIndexByName('sku')]);
 
                         if($urlKeyDuplicates){
                             array_push($data[$i], '');
@@ -337,9 +357,9 @@ class Import extends AbstractHelper
                         $this->_resources = \Magento\Framework\App\ObjectManager::getInstance()->get('Magento\Framework\App\ResourceConnection');
                         $connection = $this->_resources->getConnection();
 
-                        $convDataBrand  = $convertedData[$i][$this->getColumnImdexByName('brand')];
-                        $convDataSku    = $convertedData[$i][$this->getColumnImdexByName('sku')];
-                        $convDataDesc  = $convertedData[$i][$this->getColumnImdexByName('short_description')];
+                        $convDataBrand  = $convertedData[$i][$this->getColumnIndexByName('brand')];
+                        $convDataSku    = $convertedData[$i][$this->getColumnIndexByName('sku')];
+                        $convDataDesc  = $convertedData[$i][$this->getColumnIndexByName('short_description')];
 
                         $convDataDesc = str_replace(array('/', ' '), '-', strtolower($convDataDesc));
 //                        $brandPlusDescPlusSku = $convDataBrand . '-' . $convDataGroup . '-'  . $convDataSku;
@@ -362,9 +382,9 @@ class Import extends AbstractHelper
                     $connection= $this->_resources->getConnection();
                     $urlKey = array();
 
-                    $convDataBrand  = $convertedData[$i][$this->getColumnImdexByName('brand')];
-                    $convDataSku    = $convertedData[$i][$this->getColumnImdexByName('sku')];
-                    $convDataGroup  = $convertedData[$i][$this->getColumnImdexByName('group')];
+                    $convDataBrand  = $convertedData[$i][$this->getColumnIndexByName('brand')];
+                    $convDataSku    = $convertedData[$i][$this->getColumnIndexByName('sku')];
+                    $convDataGroup  = $convertedData[$i][$this->getColumnIndexByName('group')];
 
                     $brandPlusGroup = $convDataBrand . '-' . $convDataGroup;
                     $brandPlusGroupPlusSku = $brandPlusGroup . '-'  . $convDataSku;
@@ -382,10 +402,10 @@ class Import extends AbstractHelper
                     $this->_resources = \Magento\Framework\App\ObjectManager::getInstance()->get('Magento\Framework\App\ResourceConnection');
                     $connection = $this->_resources->getConnection();
 
-                    $convDataBrand  = $convertedData[$i][$this->getColumnImdexByName('brand')];
-                    $convDataSku    = $convertedData[$i][$this->getColumnImdexByName('sku')];
-                    $convDataDesc  = $convertedData[$i][$this->getColumnImdexByName('short_description')];
-                    $convDataDesc = str_replace(array('/', ' '), '-', strtolower($convDataDesc));
+                    $convDataBrand  = $convertedData[$i][$this->getColumnIndexByName('brand')];
+                    $convDataSku    = $convertedData[$i][$this->getColumnIndexByName('sku')];
+                    $convDataDesc  = $convertedData[$i][$this->getColumnIndexByName('short_description')];
+                    $convDataDesc = $this->getFormattedShortDescription($convDataDesc);
 
                     $urlKey = [];
                     $_key = $model->formatUrlKey($convDataBrand) . '-' . $convDataDesc . '-'  . $convDataSku;
@@ -406,8 +426,29 @@ class Import extends AbstractHelper
         return $data;
     }
 
+    /**
+     * Get formatted product short description.
+     * @param $shortDescription
+     * @return mixed
+     */
+    public function getFormattedShortDescription($shortDescription)
+    {
+        $search = ['/', ' '];
+        $replace = '-';
+        $subject = strtolower($shortDescription);
+
+        return str_replace($search, $replace, $subject);
+
+    }
+
+    /**
+     * @param $connection
+     * @param $urlKey
+     * @return mixed
+     */
     protected function getUrlKeyDuplicates($connection, $urlKey)
     {
+        // TODO: Need to check is it works properly?
         return $connection->fetchAssoc($connection->select()->from(
             ['catalog_product_entity_varchar' => $connection->getTableName('catalog_product_entity_varchar')],
             ['value', 'store_id']
@@ -418,10 +459,16 @@ class Import extends AbstractHelper
             ->Where('cpe.sku IN (?)', array_values($urlKey)));
     }
 
-    public function addExtraBrand2($convertedData) {
-			
-		$brandColumnIndex = $this->getColumnImdexByName('brand');
-		$brandColumnIndex_2 = $this->getColumnImdexByName('brand_2');
+    /**
+     * Copy column brand to column brand2
+     *
+     * @param $convertedData
+     * @return array
+     */
+    public function addExtraBrand2($convertedData)
+    {
+		$brandColumnIndex = $this->getColumnIndexByName('brand');
+		$brandColumnIndex_2 = $this->getColumnIndexByName('brand_2');
 		if($brandColumnIndex_2 <= 0) {
 			$convertedData[0][] = 'brand_2';
 			for($i = 1; $i < count($convertedData); $i++)
@@ -431,10 +478,15 @@ class Import extends AbstractHelper
 		}
 		return $convertedData;
 	}
+
+    /**
+     * @param $convertedData
+     * @return array
+     */
     public function addDefaultCategory($convertedData)
     {
-        $defaultCategoryColumnIndex = $this->getColumnImdexByName('default_category');
-        $categoriesColumnIndex = $this->getColumnImdexByName('categories');
+        $defaultCategoryColumnIndex = $this->getColumnIndexByName('default_category');
+        $categoriesColumnIndex = $this->getColumnIndexByName('categories');
 
         for($i = 1; $i < count($convertedData); $i++)
         {
@@ -459,19 +511,29 @@ class Import extends AbstractHelper
         return $defaultCategory;
     }
 
-    public function getColumnImdexByName($name)
+    /**
+     * @param $name
+     * @return bool|array|string
+     */
+    public function getColumnIndexByName($name)
     {
         if ($index = array_keys($this->headers, $name)) {
             return $index[0];
         }
+
         return false;
     }
 
+    /**
+     * @param $headerField
+     * @return bool|mixed
+     */
     public function checkDefaultValue($headerField)
     {
         if (array_key_exists($headerField, $this->getStandardAttributes())) {
             return $this->getStandardAttribute($headerField);
         }
+
         return false;
     }
 
@@ -481,13 +543,13 @@ class Import extends AbstractHelper
         $convertedItem = $this->encodToEncodUtf8($convertedItem);
         $convertedItem = str_replace(',', '.', $convertedItem);
         $convertedItem = str_replace('|', ',', $convertedItem);
-	// replace Microsoft Word version of single  and double quotations marks (“ ” ‘ ’) with  regular quotes (' and ")
-	// previously it was causing "ERROR: Curly quotes used instead of straight quotes" error
-	//$convertedItem = iconv('UTF-8', 'ASCII//TRANSLIT', $convertedItem); 
-	$convertedItem = str_replace(chr(145), "'", $convertedItem);   
-	$convertedItem = str_replace(chr(146), "'", $convertedItem);  
-	$convertedItem = str_replace(chr(147), '"', $convertedItem);   
-	$convertedItem = str_replace(chr(148), '"', $convertedItem); 
+        // replace Microsoft Word version of single  and double quotations marks (“ ” ‘ ’) with  regular quotes (' and ")
+        // previously it was causing "ERROR: Curly quotes used instead of straight quotes" error
+        //$convertedItem = iconv('UTF-8', 'ASCII//TRANSLIT', $convertedItem);
+        $convertedItem = str_replace(chr(145), "'", $convertedItem);
+        $convertedItem = str_replace(chr(146), "'", $convertedItem);
+        $convertedItem = str_replace(chr(147), '"', $convertedItem);
+        $convertedItem = str_replace(chr(148), '"', $convertedItem);
 	  
         if ($column == 'categories') {
             $convertedItem = str_replace(' > ', '/', $convertedItem);
@@ -565,7 +627,7 @@ class Import extends AbstractHelper
         $groupKey     = array_search('group', $this->headers);
         $colorKey     = array_search('color', $this->headers);
         $sizeKey      = array_search('size', $this->headers);
-        $variaionsKey = array_search('configurable_variations', $this->headers);
+        $variationsKey = array_search('configurable_variations', $this->headers);
         $skuKey       = array_search('sku', $this->headers);
         $configurableVariation = '';
         $this->standardAttributes['product_type'] = TypeConfigurable::TYPE_CODE;
@@ -595,7 +657,7 @@ class Import extends AbstractHelper
                     }
                 }
                 if($configurableVariation){
-                    $convertedData[$counter][$variaionsKey] = $configurableVariation;
+                    $convertedData[$counter][$variationsKey] = $configurableVariation;
                 }
                 $configurableVariation = '';
                 $configurableVariation .= 'sku='. self::SPECIAL_LETTER . (string)$this->prepareItem($item[$skuKey]) . ',color='.$this->prepareItem($item[$colorKey]) . ',size='.$this->prepareItem($item[$sizeKey]);
@@ -606,15 +668,69 @@ class Import extends AbstractHelper
                 $configurableVariation .= '|sku='. self::SPECIAL_LETTER . (string)$this->prepareItem($item[$skuKey]) . ',color='.$this->prepareItem($item[$colorKey]) . ',size='.$this->prepareItem($item[$sizeKey]);
             }
             if($countElements == $index && $configurableVariation){
-                $convertedData[$counter][$variaionsKey] = $configurableVariation;
+                $convertedData[$counter][$variationsKey] = $configurableVariation;
             }
         }
         $convertedData = $this->checkNameAttribute($convertedData);
-        //configurable
+        $convertedData = $this->fillMetaTags($convertedData);
         $convertedData = $this->checkUrlKeyAttribute($convertedData);
         $convertedData = $this->addDefaultCategory($convertedData);
         $convertedData = $this->addExtraBrand2($convertedData);
 
         return $convertedData;
+    }
+
+    /**
+     * Generate and fill the meta tags for every configurable products.
+     *
+     * @param $convertedData
+     * @return mixed
+     */
+    public function fillMetaTags($convertedData)
+    {
+        $brandColumnIndex       = $this->getColumnIndexByName('brand');
+        $shortDescColumnIndex   = $this->getColumnIndexByName('short_description');
+        $metaTitleColumnIndex   = $this->getColumnIndexByName('meta_title');
+        $metaDescColumnIndex    = $this->getColumnIndexByName('meta_description');
+        $metaTitlePrefix        = $this->getMetaTitlePrefix();
+        $metaDescPrefix         = $this->getMetaDescPrefix();
+
+        for($i = 1; $i < count($convertedData); $i++)
+        {
+            $shortDescriptionValue = $convertedData[$i][$shortDescColumnIndex];
+            $brandValue = ucwords($convertedData[$i][$brandColumnIndex]);
+
+            // Template for meta title is: {BRAND} {Description} - Calexis Schoenmode
+            $metaTitleValue = $brandValue . ' ' . $shortDescriptionValue . ' ' . $metaTitlePrefix;
+            /* Template for meta_description is: {Brand} {Description} online bestellen bij Calexis Schoenmode
+             * +100 merken  Veilig (achteraf) betalen Voor 17.00 besteld = morgen in huis  Gratis verzending
+             */
+            $metaDescriptionValue = $brandValue . ' ' . $shortDescriptionValue . ' ' . $metaDescPrefix;
+
+            $convertedData[$i][$metaTitleColumnIndex] = $metaTitleValue;
+            $convertedData[$i][$metaDescColumnIndex] = $metaDescriptionValue;
+        }
+
+        return $convertedData;
+    }
+
+    /**
+     * Get meta_title prefix form customImport config.
+     *
+     * @return string
+     */
+    public function getMetaTitlePrefix()
+    {
+        return $this->scopeConfig->getValue(self::CONFIG_META_TITLE_PATH);
+    }
+
+    /**
+     * Get meta_description prefix from customImport config.
+     *
+     * @return string
+     */
+    public function getMetaDescPrefix()
+    {
+        return $this->scopeConfig->getValue(self::CONFIG_META_DESCRIPTION_PATH);
     }
 }
