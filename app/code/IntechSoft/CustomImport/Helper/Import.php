@@ -370,10 +370,11 @@ class Import extends AbstractHelper
 
                         $urlKeyDuplicates = $this->getUrlKeyDuplicates($connection, $urlKey);
 
+                        $urlKey = $model->formatUrlKey($_key);
+
                         if(count($urlKeyDuplicates)){
-                            array_push($data[$i], '');
+                            array_push($data[$i], $urlKey);
                         }else{
-                            $urlKey = $model->formatUrlKey($_key);
                             array_push($data[$i], $urlKey);
                         }
                     }

@@ -295,7 +295,7 @@ class Import extends AbstractModel
             if (!$validationResult) {
                 $this->errors[] = [self::MSG_VALIDATION_FAILED];
                 foreach ($errorAggregator->getAllErrors() as $error) {
-                    $this->errors[] = sprintf(self::ERROR, $error->getErrorMessage());
+                    $this->errors[] = sprintf(self::ERROR, 'row'.$error->getRowNumber() . ': ' . $error->getErrorMessage());
                 }
                 ///$messages = [self::MSG_VALIDATION_FAILED];
             } else {
@@ -326,7 +326,6 @@ class Import extends AbstractModel
                 foreach ($errorAggregator->getAllErrors() as $error) {
                     $this->errors[] = sprintf(self::ERROR, $error->getErrorMessage());
                 }
-
             } else {
                 $importModel->invalidateIndex();
                 $this->successMessages = [
