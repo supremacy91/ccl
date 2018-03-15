@@ -55,36 +55,34 @@ class SaveProductEntityPlugin
         if ($result instanceof ImportProduct) {
             $this->registry->register('importSuccessFlag', 1, true);
         }
-        return $result;
 
+        return $result;
     }
 
     /**
      * @param ImportProduct $subject
-     * @param               $params
-     * @return array
+     * @param array         $params
      */
-    public function beforeSaveProductEntity(ImportProduct $subject, $params)
+    public function beforeSaveProductEntity(ImportProduct $subject, array $params)
     {
-        if ($this->registry->registry('isFirstSaveImportFlag')) {
-            return [$params];
+        if (!$this->registry->registry('isFirstSaveImportFlag')) {
+            $this->registry->register('isFirstSaveImportFlag', 1, false);
+
+//            $this->logger->info('Start stock update');
+//            $startTime = microtime(true);
+
+            $connection = $this->resource->getConnection();
+
+            $select = $connection->select()
+                ->from($this->resource->getTableName('catalog_product_entity'), 'entity_id')
+                ->where('type_id IN(?)', ['configurable']);
+
+            $values = ['qty' => 0, 'is_in_stock' => 0];
+            $where = sprintf('product_id IN (%1$s)', $select->assemble());
+            $connection->update($this->resource->getTableName('cataloginventory_stock_item'), $values, $where);
+
+//            $resultTime = microtime(true) - $startTime;
+//            $this->logger->info('Result time: ' . number_format($resultTime, 3) . ' sec');
         }
-
-        $this->registry->register('isFirstSaveImportFlag', 1, false);
-
-//        $this->_logger->info('Start stock update');
-//        $startTime = microtime(true);
-
-        $connection = $this->resource->getConnection();
-
-        $select = $connection->select()->from($this->resource->getTableName('catalog_product_entity'), 'entity_id')
-            ->where('type_id IN(?)', ['configurable']);
-
-        $values = ['qty' => 0, 'is_in_stock' => 0, 'stock_status_changed_auto' => 1];
-        $where = sprintf('product_id IN (%1$s)', $select->assemble());
-        $connection->update($this->resource->getTableName('cataloginventory_stock_item'), $values, $where);
-
-//        $resultTime = microtime(true) - $startTime;
-//        $this->_logger->info('Result time: ' . number_format($resultTime, 3) . ' sec');
     }
 }
