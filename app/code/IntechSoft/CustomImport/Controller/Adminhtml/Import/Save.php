@@ -118,7 +118,7 @@ class Save extends Action
             }
         }
 
-        $importSettings['put_remaining_product_stock_to_0'] = 1;
+      //  $importSettings['put_remaining_product_stock_to_0'] = 1;
 
         $resultRedirect = $this->resultFactory->create(ResultFactory::TYPE_REDIRECT);
         $resultRedirect->setPath('customimport/import/index');

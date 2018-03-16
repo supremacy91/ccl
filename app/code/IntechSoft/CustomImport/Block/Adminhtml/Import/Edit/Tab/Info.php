@@ -126,6 +126,17 @@ class Info extends Generic implements TabInterface
         );
 
         $fieldset->addField(
+            'put_remaining_product_stock_to_0',
+            'checkbox',
+            [
+                'name'          => 'put_remaining_product_stock_to_0',
+                'label'         => __('Set quantity to 0 for products are absent in csv file'),
+                'checked' => false,
+                'value'  => '1'
+            ]
+        );
+
+        $fieldset->addField(
             'upload_file',
             'file',
             [
