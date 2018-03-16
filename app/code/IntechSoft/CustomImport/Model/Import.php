@@ -4,6 +4,7 @@ namespace IntechSoft\CustomImport\Model;
 
 use Magento\Catalog\Model\AbstractModel;
 use Magento\Framework\App\Filesystem\DirectoryList;
+use Magento\Framework\Exception\LocalizedException;
 use Magento\ImportExport\Model\Import\Adapter as ImportAdapter;
 use IntechSoft\CustomImport\Helper\Import as HelperImport;
 use IntechSoft\CustomImport\Model\Attributes;
@@ -12,6 +13,7 @@ use Magento\Framework\Filesystem;
 use Magento\Framework\File\Csv;
 use Magento\Framework\Registry;
 use Magento\Indexer\Model\Indexer\CollectionFactory as IndexerCollectionFactory;
+use Magento\Framework\App\ResourceConnection;
 
 class Import extends AbstractModel
 {
@@ -24,30 +26,43 @@ class Import extends AbstractModel
      * Determine importing via Custom Import Form
      */
     const REGISTER_KEY_FROM          = 'isIntechsoftCustomImportViaForm';
+    const PREPARED_PRODUCT_DATA      = 'preparedProductData';
 
     const MSG_SUCCESS                = 'Successfully';
     const MSG_FAILED                 = 'Import fail';
     const MSG_PREPARE_DATA_FAILED    = 'Prepare data was fail';
     const MSG_VALIDATION_FAILED      = 'Data validation is failed. Please fix errors and try again';
     const MSG_NO_DATA_FOUND          = 'No data found. Please try again latter';
-    const MSG_MAX_ERRORS             = 1800000;
+    const MSG_MAX_ERRORS             = 80000;
     const MSG_VALIDATION_STATUS      = 'Checked rows: %d; Checked entities: %d; Invalid rows: %d; Total errors: %d';
     const MSG_IMPORT_FINISHED        = 'Import finished';
     const MSG_IMPORT_TERMINATED      = 'Import terminated';
 
-    const LOG_FILE                   = 'Custom_Import.log';
+    const LOG_FILE                   = 'Custom_ModelImport.log';
     const ERROR                      = 'ERROR: %s';
 
     const PREPARE_DATA_PROCESS_ERROR = 'Prepare data for import error ';
     const PREPARED_CSV_MISSED        = 'prepared csv file missed';
 
-    const CUSTOM_IMPORT_FOLDER = 'import/current';
+    const CUSTOM_IMPORT_FOLDER       = 'import/current';
+
+    /**
+     * @var IndexerCollectionFactory
+     */
+    private $indexerCollectionFactory;
+
+    /**
+     * @var ResourceConnection
+     */
+    private $resource;
 
     protected $_importCsv;
-
     protected $_preparedCsvFile;
+
+    /**
+     * @var array
+     */
     protected $_errorMessage;
-    private $indexerCollectionFactory;
 
     /**
      * @var \IntechSoft\CustomImport\Helper\Import
@@ -83,9 +98,9 @@ class Import extends AbstractModel
 
     public $importSettings;
 
-    public $errors = array();
+    public $errors = [];
 
-    public $successMessages = array();
+    public $successMessages = [];
 
     /**
      * @var \Zend\Log\Writer\Stream
@@ -104,6 +119,7 @@ class Import extends AbstractModel
      * @param Filesystem                                $filesystem
      * @param Csv                                       $csvProcessor
      * @param Registry                                  $registry
+     * @param ResourceConnection                        $resourceConnection
      * @param IndexerCollectionFactory                  $indexerCollectionFactory
      */
     public function __construct(
@@ -114,6 +130,7 @@ class Import extends AbstractModel
         Filesystem $filesystem,
         Csv $csvProcessor,
         Registry $registry,
+        ResourceConnection $resourceConnection,
         IndexerCollectionFactory $indexerCollectionFactory
     )
     {
@@ -124,6 +141,7 @@ class Import extends AbstractModel
         $this->_registry       = $registry;
         $this->csvProcessor    = $csvProcessor;
         $this->objectManager   = $objectManager;
+        $this->resource = $resourceConnection;
         $this->indexerCollectionFactory = $indexerCollectionFactory;
 
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/' . $this::LOG_FILE);
@@ -177,6 +195,8 @@ class Import extends AbstractModel
             $this->attributesModel->setAttributeSettings($this->importSettings);
             $this->attributesModel->checkAddAttributes($this->_preparedCsvFile);
             $this->execute();
+
+            $this->setOutOfStockForNotUsedProducts();
         } else {
             $this->errors[] = self::MSG_PREPARE_DATA_FAILED;
         }
@@ -217,6 +237,7 @@ class Import extends AbstractModel
 
             // ### Put collected data to file.
             $this->csvProcessor->saveData($this->_preparedCsvFile, $dataAfter);
+            $this->_registry->register(self::PREPARED_PRODUCT_DATA, $dataAfter);
         } else {
             $this->_errorMessage = self::PREPARE_DATA_PROCESS_ERROR ;
             return false;
@@ -363,11 +384,65 @@ class Import extends AbstractModel
      */
     public function performReindex()
     {
-        foreach ($this->indexerCollectionFactory->create()->getItems() as $indexer) {
-            /* @var $indexer \Magento\Indexer\Model\Indexer */
-            if ($indexer->getStatus() != 'valid'){
-                $indexer->reindexRow($indexer->getId());
+        try {
+            foreach ($this->indexerCollectionFactory->create()->getItems() as $indexer) {
+                /* @var $indexer \Magento\Indexer\Model\Indexer */
+                if ($indexer->getStatus() != 'valid') {
+                    $indexer->reindexAll();
+                }
+            }
+        } catch (LocalizedException $e) {
+            $this->_exportLogger->info('# Reindex Error');
+            $this->_exportLogger->info('Reindex id:'.$indexer->getId());
+            $this->_exportLogger->info('Error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * If needed or set option "Put remaining products stock to 0" in CustomImportForm set 'Out Of Stock'
+     * for absent products in the import file.
+     */
+    private function setOutOfStockForNotUsedProducts()
+    {
+        $data = $this->_registry->registry(self::PREPARED_PRODUCT_DATA);
+
+        if (isset($this->importSettings['put_remaining_product_stock_to_0']) && count($data))
+        {
+            $skuList = [];
+            foreach ($data as $keys => $row) {
+                if (isset($row[0]) && $keys > 0) {
+                    $skuList[] = $row[0];
+                }
+            }
+
+            if (count($skuList)) {
+                /** @var \Magento\Framework\DB\Adapter\Pdo\Mysql $connection */
+                $connection = $this->resource->getConnection();
+
+                try {
+                    $select = $connection->select()
+                        ->from($this->resource->getTableName('catalog_product_entity'), 'entity_id')
+                        ->where('sku IN (?)', $skuList);
+
+                    $selectQuery = $select->assemble();
+
+                    $values = ['qty' => 0, 'is_in_stock' => 0/*, 'stock_status_changed_auto' => 1*/];
+                    $where = sprintf('product_id NOT IN (%1$s)', $selectQuery);
+                    $connection->update(
+                        $this->resource->getTableName('cataloginventory_stock_item'),
+                        $values,
+                        $where
+                    );
+
+                } catch (LocalizedException $e) {
+                    $this->errors[] = __METHOD__;
+                    $this->errors[] = $e->getMessage();
+                }
             }
         }
+
+        unset($data);
+        unset($skuList);
+        $this->_registry->unregister(self::PREPARED_PRODUCT_DATA);
     }
 }

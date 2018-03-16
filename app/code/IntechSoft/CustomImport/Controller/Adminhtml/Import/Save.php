@@ -108,8 +108,8 @@ class Save extends Action
         $importAllowed = false;
         $importedFileName = '';
 
-        $storeManager = $this->_objectManager->get('Magento\Store\Model\StoreManagerInterface');
-        $storeId = $storeManager->getStore()->getStoreId();
+//        $storeManager = $this->_objectManager->get('Magento\Store\Model\StoreManagerInterface');
+//        $storeId = $storeManager->getStore()->getStoreId();
         $importSettings = array();
         $importParams = $this->getRequest()->getParam('import');
         foreach ($importParams as $name => $value) {
@@ -117,6 +117,8 @@ class Save extends Action
                 $importSettings[$name] = $value;
             }
         }
+
+        $importSettings['put_remaining_product_stock_to_0'] = 1;
 
         $resultRedirect = $this->resultFactory->create(ResultFactory::TYPE_REDIRECT);
         $resultRedirect->setPath('customimport/import/index');

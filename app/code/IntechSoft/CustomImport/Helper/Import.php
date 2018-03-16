@@ -11,6 +11,7 @@ use Magento\Framework\Registry;
 use Magento\Framework\App\Filesystem\DirectoryList;
 use Magento\ConfigurableProduct\Model\Product\Type\Configurable as TypeConfigurable;
 use Magento\Catalog\Model\Product\Type as ProductType;
+use Magento\Framework\App\ResourceConnection as AppResourceConnection;
 
 /**
  * Class Import
@@ -28,9 +29,13 @@ class Import extends AbstractHelper
     protected $objectManager;
     protected $headers;
     protected $itemImage;
-    protected $_resources;
     protected $_attributeSetFactory;
     protected $directory_list;
+
+    /**
+     * @var AppResourceConnection
+     */
+    private $resource;
 
     /**
      * @var \Magento\Framework\App\Config\ScopeConfigInterface
@@ -101,17 +106,29 @@ class Import extends AbstractHelper
         'Color Hex' => 'color_hex'
     );
 
+    /**
+     * Import constructor.
+     *
+     * @param ObjectManagerInterface $objectManager
+     * @param SetFactory             $attributeSetFactory
+     * @param Registry               $registry
+     * @param DirectoryList          $directory_list
+     * @param AppResourceConnection  $resource
+     * @param Context                $context
+     */
     public function __construct(
         ObjectManagerInterface $objectManager,
         SetFactory $attributeSetFactory,
         Registry $registry,
         DirectoryList $directory_list,
+        AppResourceConnection $resource,
         Context $context
     )
     {
         $this->directory_list = $directory_list;
         $this->_attributeSetFactory = $attributeSetFactory;
         $this->objectManager = $objectManager;
+        $this->resource = $resource;
         $this->_registry = $registry;
         parent::__construct($context);
 
@@ -340,8 +357,7 @@ class Import extends AbstractHelper
                 $data[$i] = $convertedData[$i];
                 if ($urlKey) {
                     if ($convertedData[$i][$typeKey] === 'simple') {
-                        $this->_resources = \Magento\Framework\App\ObjectManager::getInstance()->get('Magento\Framework\App\ResourceConnection');
-                        $connection = $this->_resources->getConnection();
+                        $connection = $this->resource->getConnection();
                         $urlKey = array();
                         $urlKey[$model->formatUrlKey($convertedData[$i][$this->getColumnIndexByName('brand')]. '-' . $convertedData[$i][$this->getColumnIndexByName('sku')])] = $convertedData[$i][$this->getColumnIndexByName('sku')];
                         $urlKeyDuplicates = $this->getUrlKeyDuplicates($connection, $urlKey);
@@ -354,8 +370,7 @@ class Import extends AbstractHelper
                         }
 
                     } else {
-                        $this->_resources = \Magento\Framework\App\ObjectManager::getInstance()->get('Magento\Framework\App\ResourceConnection');
-                        $connection = $this->_resources->getConnection();
+                        $connection = $this->resource->getConnection();
 
                         $convDataBrand  = $convertedData[$i][$this->getColumnIndexByName('brand')];
                         $convDataSku    = $convertedData[$i][$this->getColumnIndexByName('sku')];
@@ -379,8 +394,8 @@ class Import extends AbstractHelper
                         }
                     }
                 } elseif ($convertedData[$i][$typeKey] !== 'simple') {
-                    /*$this->_resources = \Magento\Framework\App\ObjectManager::getInstance()->get('Magento\Framework\App\ResourceConnection');
-                    $connection= $this->_resources->getConnection();
+                    /*
+                    $connection= $this->resource->getConnection();
                     $urlKey = array();
 
                     $convDataBrand  = $convertedData[$i][$this->getColumnIndexByName('brand')];
@@ -400,8 +415,7 @@ class Import extends AbstractHelper
                     }else{
                         array_push($data[$i], $urlKey);
                     }*/
-                    $this->_resources = \Magento\Framework\App\ObjectManager::getInstance()->get('Magento\Framework\App\ResourceConnection');
-                    $connection = $this->_resources->getConnection();
+                    $connection = $this->resource->getConnection();
 
                     $convDataBrand  = $convertedData[$i][$this->getColumnIndexByName('brand')];
                     $convDataSku    = $convertedData[$i][$this->getColumnIndexByName('sku')];
@@ -702,7 +716,7 @@ class Import extends AbstractHelper
             $brandValue = ucwords($convertedData[$i][$brandColumnIndex]);
 
             // Template for meta title is: {BRAND} {Description} - Calexis Schoenmode
-            $metaTitleValue = $brandValue . ' ' . $shortDescriptionValue . ' ' . $metaTitlePrefix;
+            $metaTitleValue = $brandValue . ' ' . $shortDescriptionValue /*. ' ' . $metaTitlePrefix */;
             /* Template for meta_description is: {Brand} {Description} online bestellen bij Calexis Schoenmode
              * +100 merken  Veilig (achteraf) betalen Voor 17.00 besteld = morgen in huis  Gratis verzending
              */

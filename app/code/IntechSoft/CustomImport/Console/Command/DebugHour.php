@@ -25,7 +25,7 @@ use Magento\Store\Model\Store;
 class DebugHour extends Command
 {
     const CUSTOM_IMPORT_FOLDER = 'import/cron/hour';
-    const SUCCESS_MESSAGE      = 'Import finished successfully from file - ';
+    const SUCCESS_MESSAGE      = 'Import finished successfully from file: ';
     const FAIL_MESSAGE         = 'Import fail from file - ';
 
     /**
@@ -162,7 +162,7 @@ class DebugHour extends Command
 
         ini_set('memory_limit', '2048M');
 
-        $this->_logger->info('# Hourly cron started at - ' . $this->_date->gmtDate('Y-m-d H:i:s'));
+        $this->_logger->info('### Hourly cron started at - ' . $this->_date->gmtDate('Y-m-d H:i:s'));
         $importDir = $this->_directoryList->getPath(DirectoryList::VAR_DIR) . '/' . self::CUSTOM_IMPORT_FOLDER ;
         $this->_logger->info('$importDir - '.$importDir);
 
@@ -182,9 +182,16 @@ class DebugHour extends Command
             $this->_coreRegistry->unregister('importSuccessFlag');
             $importedFileName = $importDir . '/' . $file;
             $this->_logger->info('$importedFileName - ' . $importedFileName);
+
+            $this->_logger->info('==> Start import process');
+            $startTime = microtime(true);
+
             /* @var $importModel \IntechSoft\CustomImport\Model\Import */
             $importModel = $this->_importModel;
             $importModel->setCsvFile($importedFileName, true)->process();
+
+            $resultTime = microtime(true) - $startTime;
+            $this->_logger->info('==> Result time: ' . number_format($resultTime, 3) . ' sec');
 
             $importSuccessFlag = $this->_coreRegistry->registry('importSuccessFlag');
             if ($importSuccessFlag === 1) {
@@ -199,7 +206,7 @@ class DebugHour extends Command
                 }
                 $r = rename($src, $dest);
                 if ($r) {
-                    $this->_logger->info('Moved to import history');
+                    $this->_logger->info('Moved to import history folder');
                 }
                 /*** Moved to import History***/
 
@@ -214,6 +221,7 @@ class DebugHour extends Command
                     }
                     $this->_logger->info($error);
                 }
+
                 $src = $importedFileName;
                 $archiveName = "failed_" . date('YmdHis') . "_" . $file;
                 $dest = $this->_directoryList->getPath(DirectoryList::VAR_DIR) . "/failed_import_history/" . $archiveName;
@@ -243,9 +251,16 @@ class DebugHour extends Command
 //                }
             }
 
+            $this->_logger->info('==> Start reindex process');
+            $startTime = microtime(true);
+
             // Require to reindex the invalid state.
             $importModel->performReindex();
+
+            $resultTime = microtime(true) - $startTime;
+            $this->_logger->info('==> Result time: ' . number_format($resultTime, 3) . ' sec');
         }
+
         $this->_logger->info('hourly cron finished at - ' . $this->_date->gmtDate('Y-m-d H:i:s'));
     }
 }
